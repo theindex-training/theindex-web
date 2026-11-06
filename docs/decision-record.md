@@ -2,8 +2,8 @@
 
 The reference for building the public site of The Index (`theindex-web`) and the content features it needs in `theindex-api` and `theindex-front`. It records what was decided, why, and what the first version (MVP) contains. Update it when a decision changes; don't let the code and this file disagree.
 
-- **Status:** agreed, MVP not started
-- **Decided:** 2026-11-05
+- **Status:** agreed, MVP in progress (items 1–5 done, see section 12)
+- **Decided:** 2026-11-05; changes since then are listed in section 15
 - **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates; may become `theindex-infra`)
 
 ## 1. Context
@@ -69,19 +69,20 @@ flowchart LR
 | `/sitemap.xml`, `/rss.xml`, `/robots.txt` | | Generated from the API on request |
 | `/login` | 301 to `https://app.theindex.training/login` | Only old portal path we keep |
 
-**Slug rules** (articles and categories; one implementation in the API, `*.spec.ts` next to it):
+**Slug rules** (articles and categories; one implementation in the API: `src/common/utils/slug.util.ts`, with `slug.util.spec.ts`):
 - Generated from the title (or category name) with the official Bulgarian transliteration (Streamlined System, Закон за транслитерацията 2009):
 
   | а | б | в | г | д | е | ж | з | и | й | к | л | м | н | о | п | р | с | т | у | ф | х | ц | ч | ш | щ | ъ | ь | ю | я |
   |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
   | a | b | v | g | d | e | zh | z | i | y | k | l | m | n | o | p | r | s | t | u | f | h | ts | ch | sh | sht | a | y | yu | ya |
 
-  Exception: `ия` at the end of a word becomes `ia` (София → sofia).
-- Lowercase; Latin letters and digits kept; everything else becomes `-`; repeated `-` collapsed and trimmed; at most 80 characters, cut at a word boundary.
+  The law's two exceptions: `ия` at the end of a word becomes `ia` (София → `sofia`), and the word "България" becomes `bulgaria` (only the whole word: "Българията" → `balgariyata`). The accented `ѝ` and `ѐ` become `i` and `e`.
+- Lowercase; Latin letters and digits kept, accents stripped (`é` → `e`), apostrophes dropped; letters outside the Bulgarian and Latin alphabets and everything else become `-`; repeated `-` collapsed and trimmed; at most 80 characters, cut at a word boundary.
 - Examples: "Как да започнем с КросФит" → `kak-da-zapochnem-s-krosfit`; "Защо клековете са важни?" → `zashto-klekovete-sa-vazhni`.
-- Unique per language. On a clash, add `-2`, `-3`… Reserved for articles: `category`.
+- Unique per language. On a clash, add `-2`, `-3`… (shortening the base at a word so the result still fits). Reserved for articles: `category`.
+- A title or name that gives no slug at all (e.g. only emoji) uses a fallback: `kategoria` for categories; the article fallback is chosen in item 6.
 - An admin can edit the slug (Latin `a-z`, `0-9`, `-` only) **until the first publish; after that it is fixed**, so shared links never break. Changing published slugs, with redirects, is phase 2.
-- A category slug is editable until a published article uses the category.
+- A category slug is generated once and kept when the category is renamed; an admin can change it until a published article uses the category (the lock comes with item 6).
 
 ## 5. Article lifecycle and permissions
 
@@ -118,19 +119,20 @@ New tables only; nothing existing changes. `synchronize` adds them (no migration
 | `createdByAccountId`, `updatedByAccountId` | uuid, null, FK `accounts` `ON DELETE SET NULL` | |
 | `createdAt`, `updatedAt` | timestamptz | |
 
-**`article_categories`**: `id`, `language`, `name`, `slug` (unique with `language`), `description` (optional; category page intro and meta description), `sortOrder`, timestamps.
+**`article_categories`** (done, theindex-api#52): `id`, `language`, `name` (1–60 characters), `nameKey` (the lowercased name; internal, never returned), `slug`, `description` (optional, up to 300 characters; category page intro and meta description), `sortOrder`, timestamps. Unique indexes on `(language, slug)` and `(language, nameKey)`: slugs and names (ignoring case) are unique per language, and the database decides, so concurrent requests can't both win (409).
 **`article_category_links`**: `articleId` + `categoryId` (`ON DELETE CASCADE` both ways). It holds the **published** categories; the draft holds `categoryIds`. Deleting a category removes its links and drops it from drafts' `categoryIds`; the articles stay.
 
-**`media`**
+**`media`** (done, theindex-api#51)
 
 | Column | Notes |
 |---|---|
 | `id` | uuid, also the folder name: files are never overwritten, so they can be cached forever |
-| `altText` | Required. Describes the image for screen readers and Google |
-| `width`, `height` | Of the stored master |
-| `variants` | jsonb: `[{ width, height, path }]`, WebP at 480 / 960 / 1600 / 2400 px (only up to the original width) |
+| `altText` | Required, 1–250 characters. Describes the image for screen readers and Google |
+| `masterPath` | The master: upright, metadata removed, at most 4096 px on its longer side, in the upload's format (JPEG, PNG or WebP). Kept so variants can be regenerated later |
+| `width`, `height` | Of the master |
+| `variants` | jsonb: `[{ width, height, path }]`, WebP at 480 / 960 / 1600 / 2400 px (only the widths that fit; a smaller image gets one variant at its own width) |
 | `ogPath` | 1200×630 JPEG crop, used when it is a featured image (social previews) |
-| `originalFilename`, `sizeBytes`, `uploadedByAccountId` (`SET NULL`), `createdAt` | |
+| `originalFilename`, `sizeBytes`, `uploadedByAccountId` (`SET NULL`), `createdAt`, `updatedAt` | |
 
 Captions are not on `media`: they live on the image block, because the same photo can have different captions in different articles. The featured image has no caption.
 
@@ -168,8 +170,8 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 | `POST /api/articles/:id/discard-draft` | Reset the draft to the published version |
 | `DELETE /api/articles/:id` | Permanent; 409 when `PUBLISHED` |
 | `POST /api/articles/:id/preview-token` | Signed token, 30 minutes, for `/preview` on the site |
-| `GET/POST/PATCH/DELETE /api/article-categories[/:id]` | Category management |
-| `POST /api/media` (multipart: `file`, `altText`) | Upload: JPEG, PNG or WebP, up to 15 MB, checked by decoding (not by extension). Auto-rotate, strip EXIF (phone photos carry GPS), make variants |
+| `GET/POST/PATCH/DELETE /api/article-categories[/:id]` | Category management (done, theindex-api#52) |
+| `POST /api/media` (multipart: `file`, `altText`) | Upload: JPEG, PNG or WebP, up to 15 MB, checked by decoding (not by extension); damaged files are a 400, larger ones a 413. Auto-rotate, strip EXIF (phone photos carry GPS), make variants (done, theindex-api#51) |
 | `GET /api/media?page&pageSize`, `GET /api/media/:id`, `PATCH /api/media/:id` `{ altText }` | Media library. No delete in the MVP (articles may use the image) |
 
 **Public (no auth, published content only)**
@@ -177,14 +179,14 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 |---|---|
 | `GET /api/public/articles?category&q&page&pageSize` | Summaries, newest first. `q` searches title, excerpt and text with `ILIKE` (Postgres has no Bulgarian full-text config; fine at this size) |
 | `GET /api/public/articles/:slug` | Article with blocks, image variants resolved to URLs, categories |
-| `GET /api/public/article-categories` | Categories with at least one published article |
-| `GET /api/public/article-categories/:slug` | One category |
+| `GET /api/public/article-categories` | Categories with at least one published article (item 7) |
+| `GET /api/public/article-categories/:slug` | One category; 404 when it has no published article (item 7) |
 | `GET /api/public/sitemap` | Slugs and `lastmod` for articles and categories |
 | `GET /api/public/preview?token=` | Draft rendered for preview |
 
 - Lists return `{ items, total, page, pageSize }` (page size up to 50).
 - **Publish validation:** title 1–200 characters, valid unique slug, at least one block, excerpt up to 300, SEO title up to 70, SEO description up to 160, existing categories and featured image. Draft saves validate structure only, so incomplete work can always be saved.
-- **New config** (`.env.example`): `MEDIA_STORAGE_DIR` (`/data/media`), `MEDIA_PUBLIC_URL` (`https://media.theindex.training`), `MEDIA_MAX_UPLOAD_MB` (15).
+- **New config** (`.env.example`): `MEDIA_STORAGE_DIR` (`/data/media`), `MEDIA_PUBLIC_URL` (`https://media.theindex.training`), `MEDIA_MAX_UPLOAD_MB` (15). They are read on first use: in production without them, media requests answer 503, but the API starts and everything else works. In development they default to `./media-storage`, which the API serves at `/media-files`.
 - **New dependencies:** `sharp` (prebuilt for Alpine), `sanitize-html`. Uploads use the multer that `@nestjs/platform-express` already ships.
 - Tests follow the API's rules: specs for the slug, block normalization and sanitizer utils; `*.int-spec.ts` against Postgres for the services (lifecycle, permissions, 409s, `SET NULL`, search); e2e for the public endpoints.
 
@@ -240,6 +242,9 @@ Current state (2026-11-05): `/opt/theindex/docker-compose.yml` on the Contabo VP
 ```yaml
   api:
     # ...as today, plus:
+    environment:
+      - MEDIA_STORAGE_DIR=/data/media
+      - MEDIA_PUBLIC_URL=https://media.theindex.training
     volumes:
       - theindex_media:/data/media
     labels:
@@ -288,23 +293,23 @@ Every router keeps its `-http` twin with the HTTPS redirect, `entrypoints`, `tls
 
 Each item is roughly one PR. API items come first because the other two repos depend on them; the site scaffold can start in parallel against a stub API.
 
-| # | Repo | Item | Depends on |
-|---|---|---|---|
-| 1 | web | Scaffold: Astro, tokens, fonts, layout, header/footer, theme switch, 404 page, cache and security headers, lint/format/tests, Dockerfile, `CLAUDE.md` | |
-| 2 | web | CI workflow (needs the owner's approval) | 1 |
-| 3 | api | Slug transliteration util | |
-| 4 | api | Media: upload, processing, storage, library | |
-| 5 | api | Article categories: admin CRUD and public endpoints | 3 |
-| 6 | api | Articles: entity, draft and lifecycle, block validation and sanitizing, admin endpoints | 3, 4, 5 |
-| 7 | api | Public articles, search, sitemap feed, preview tokens | 6 |
-| 8 | infra | DNS records, compose phase A | |
-| 9 | front | `/content` area, navigation, categories pages | 5 |
-| 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 |
-| 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 |
-| 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 |
-| 13 | web | Home, article list, category pages, pagination, search | 12 |
-| 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 |
-| 15 | infra | Compose phase B, Search Console | 8, 11, 14 |
+| # | Repo | Item | Depends on | Status |
+|---|---|---|---|---|
+| 1 | web | Scaffold: Astro, tokens, fonts, layout, header/footer, theme switch, 404 page, cache and security headers, lint/format/tests, Dockerfile, `CLAUDE.md` | | Done (theindex-web#2) |
+| 2 | web | CI workflow (needs the owner's approval) | 1 | Done (theindex-web#3); deploy off until `DEPLOY_ENABLED` |
+| 3 | api | Slug transliteration util | | Done (theindex-api#50) |
+| 4 | api | Media: upload, processing, storage, library | | Done (theindex-api#51); uploads answer 503 until item 8 |
+| 5 | api | Article categories: admin CRUD | 3 | Done (theindex-api#52) |
+| 6 | api | Articles: entity, draft and lifecycle, block validation and sanitizing, admin endpoints; category slug lock and category delete cleanup | 3, 4, 5 | |
+| 7 | api | Public articles and categories, search, sitemap feed, preview tokens | 6 | |
+| 8 | infra | DNS records, compose phase A (incl. the media volume, settings and container) | | |
+| 9 | front | `/content` area, navigation, categories pages | 5 | |
+| 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | |
+| 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | |
+| 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | |
+| 13 | web | Home, article list, category pages, pagination, search | 12 | |
+| 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 | |
+| 15 | infra | Compose phase B, Search Console | 8, 11, 14 | |
 
 ## 13. Phase 2 and later
 
@@ -321,3 +326,13 @@ Each item is roughly one PR. API items come first because the other two repos de
 - **Home featured article:** the newest published article. A manual "featured" flag is phase 2.
 - **Categories in the header:** all categories with published articles, in `sortOrder`. If the list grows too long, show a "Categories" menu instead.
 - **Reading time** on article cards ("5 мин четене"): not in the MVP unless asked for.
+
+## 15. Changes since 2026-11-05
+
+- **2026-11-06, slugs (theindex-api#50):** added the law's second exception ("България" → `bulgaria`, whole word only), `ѝ`/`ѐ` → `i`/`e`, accent stripping, apostrophes and the fallback slug (section 4).
+- **2026-11-06, media (theindex-api#51):** `media` also stores `masterPath` (the cleaned-up original, so variants can be regenerated) and `updatedAt`. Media settings never stop the API from starting; uploads answer 503 until they are set (sections 6, 8, 11).
+- **2026-11-06, categories (theindex-api#52):**
+  - The public category endpoints moved from item 5 to item 7: a category is only public once it has a published article, and articles come in item 6.
+  - Category names are unique per language, ignoring case, enforced by a unique index on the lowercased name (`nameKey`).
+  - Renaming a category keeps its slug.
+  - The slug lock and the cleanup on delete come with item 6 (sections 4, 6, 8, 12).

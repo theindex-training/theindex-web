@@ -2,9 +2,9 @@
 
 The reference for building the public site of The Index (`theindex-web`) and the content features it needs in `theindex-api` and `theindex-front`. It records what was decided, why, and what the first version (MVP) contains. Update it when a decision changes; don't let the code and this file disagree.
 
-- **Status:** agreed, MVP in progress (items 1–7 done, see section 12)
+- **Status:** agreed, MVP in progress (items 1–8 done, see section 12)
 - **Decided:** 2026-11-05; changes since then are listed in section 15
-- **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates; may become `theindex-infra`)
+- **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates, including the production compose file and the media container's nginx config; may become `theindex-infra`)
 
 ## 1. Context
 
@@ -246,9 +246,15 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 
 ## 11. Infrastructure
 
-Current state (2026-11-05): `/opt/theindex/docker-compose.yml` on the Contabo VPS with `traefik` (v3.6.1, Let's Encrypt HTTP challenge, www → apex redirect), `db`, `api` (`theindex.training/api`) and `front` (rest of `theindex.training`; image hard-coded instead of `${FRONT_IMAGE}`). Each repo's deploy job runs `docker compose pull && docker compose up -d` for the whole stack.
+Current state (2026-11-06, after compose phase A): `/opt/theindex/docker-compose.yml` on the Contabo VPS, a copy of `docker-compose.prod.yml` in `theindex-dev`, next to `/opt/theindex/media/default.conf` (`media/default.conf` there). The VPS copy is updated by hand, so change both together. Services:
+- `traefik` (v3.6.1, Let's Encrypt HTTP challenge, www → apex redirect) and `db`.
+- `api` (`/api` on both `theindex.training` and `app.theindex.training`) with `MEDIA_STORAGE_DIR=/data/media` on the `theindex_media` volume and `MEDIA_PUBLIC_URL=https://media.theindex.training`.
+- `front` (`${FRONT_IMAGE}`, everything else on both hosts).
+- `media` (`nginx:alpine`, the `theindex_media` volume read-only on `media.theindex.training`).
 
-**Target labels and services** (sketch; the final file is written during the cutover):
+`CORS_ORIGIN` in `.env` lists both hosts until phase B. Each repo's deploy job runs `docker compose pull && docker compose up -d` for the whole stack.
+
+**Target labels and services after phase B** (sketch; the real file is `docker-compose.prod.yml` in `theindex-dev`):
 
 ```yaml
   api:
@@ -280,8 +286,8 @@ Current state (2026-11-05): `/opt/theindex/docker-compose.yml` on the Contabo VP
   media:
     image: nginx:alpine
     volumes:
-      - theindex_media:/usr/share/nginx/html:ro
-      - ./media/default.conf:/etc/nginx/conf.d/default.conf:ro  # cache headers, nosniff
+      - theindex_media:/srv/media:ro
+      - ./media/default.conf:/etc/nginx/conf.d/default.conf:ro  # root /srv/media, cache headers, nosniff
     labels:
       - traefik.http.routers.media.rule=Host(`media.theindex.training`)
 
@@ -289,13 +295,19 @@ volumes:
   theindex_media:
 ```
 
-Every router keeps its `-http` twin with the HTTPS redirect, `entrypoints`, `tls.certresolver=le` and `traefik.docker.network=theindex_internal`, as today.
+Every router keeps its `-http` twin with the HTTPS redirect, `entrypoints`, `tls.certresolver=le` and `traefik.docker.network=theindex_internal`, as today. The `-http` twin's rule must list the same hosts as the HTTPS router, or plain-HTTP requests to the new host get a 404 instead of the redirect.
+
+**The media container:**
+- It mounts the volume at `/srv/media`, not nginx's default `/usr/share/nginx/html`. Docker copies an image's files into an empty named volume when it's first mounted, so nginx's `index.html` and `50x.html` would have ended up in the media volume and been served.
+- `media/default.conf`: `root /srv/media`, GET and HEAD only, no directory listing, 404 at `/`, `Cache-Control: public, max-age=31536000, immutable` and `X-Content-Type-Options: nosniff` (repeated in the `location`, because nginx drops server-level `add_header`s in a location that has its own). The long cache is safe because every upload gets its own `<media id>/` folder and its files are never rewritten.
+- The file must exist on the VPS before the container starts; otherwise Docker creates an empty folder in its place and nginx doesn't start.
+- The API runs as root and writes files as 644 and folders as 755, so nginx's worker can read them.
 
 **Cutover order** (certificates are requested over HTTP, so DNS must resolve first or Let's Encrypt fails and rate-limits):
-1. Spaceship DNS: add `A` records `app` and `media` with the same IP as `@`. Wait until they resolve.
-2. Compose phase A: `api` and `front` answer on **both** `theindex.training` and `app.theindex.training` (`Host(...) || Host(...)`). Add the media volume and container. Use `${FRONT_IMAGE}`. Check `app.theindex.training` end to end.
+1. Spaceship DNS: add `A` records `app` and `media` with the same IP as `@`. Wait until they resolve. (Done 2026-11-06.)
+2. Compose phase A: `api` and `front` answer on **both** `theindex.training` and `app.theindex.training` (`Host(...) || Host(...)`). Add the media volume and container. Use `${FRONT_IMAGE}`. Set `CORS_ORIGIN` to both hosts. Check `app.theindex.training` end to end. (Done 2026-11-06: both hosts, the HTTP redirects, a test upload and its headers on `media.` checked.)
 3. Ship the API and back-office work. Admins write the first articles on `app.`.
-4. Compose phase B: `theindex.training` → `web`. `front` and `api` keep only `app.`. Set the portal's `publicSiteUrl`. In `theindex-web`, set the Actions variable `DEPLOY_ENABLED=true` so merges to `main` redeploy the site (until then its pipeline builds and pushes the image but doesn't deploy).
+4. Compose phase B: `theindex.training` → `web`. `front` and `api` keep only `app.` (both routers each), and `CORS_ORIGIN=https://app.theindex.training`. Update `docker-compose.prod.yml` in `theindex-dev` in the same change. Set the portal's `publicSiteUrl`. In `theindex-web`, set the Actions variable `DEPLOY_ENABLED=true` so merges to `main` redeploy the site (until then its pipeline builds and pushes the image but doesn't deploy).
 5. Google Search Console: verify the domain with a TXT record in Spaceship and submit `https://theindex.training/sitemap.xml`.
 
 **Backups:** Contabo's daily instance backups include the database and the media volume. A nightly `pg_dump` is recommended on top (a snapshot of a running Postgres isn't guaranteed to restore cleanly). **Never print or share `traefik/acme.json`**: it holds the certificates' private keys.
@@ -313,7 +325,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 5 | api | Article categories: admin CRUD | 3 | Done (theindex-api#52) |
 | 6 | api | Articles: entity, draft and lifecycle, block validation and sanitizing, admin endpoints; category slug lock and category delete cleanup | 3, 4, 5 | Done (theindex-api#53, #54) |
 | 7 | api | Public articles and categories, search, sitemap feed, preview tokens | 6 | Done (theindex-api#55) |
-| 8 | infra | DNS records, compose phase A (incl. the media volume, settings and container) | | |
+| 8 | infra | DNS records, compose phase A (incl. the media volume, settings and container) | | Done (2026-11-06, on the VPS; templates in `theindex-dev`) |
 | 9 | front | `/content` area, navigation, categories pages | 5 | |
 | 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | |
 | 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | |
@@ -330,7 +342,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 - Subscribers and weekly digest emails (rendered by the API from the blocks).
 - Comments (readers with accounts).
 - Movements library (`/movements`), shared with the portal (records, trainings), and movement blocks in articles.
-- Changing published slugs with redirects; a "featured" flag for the home page; other languages; media delete and cleanup; a CDN in front; nightly `pg_dump`; versioning the compose file (`theindex-dev`).
+- Changing published slugs with redirects; a "featured" flag for the home page; other languages; media delete and cleanup; a CDN in front; nightly `pg_dump`; deploying the compose file from `theindex-dev` (today `docker-compose.prod.yml` is copied to the VPS by hand).
 
 ## 14. Open points (defaults in use until decided)
 
@@ -358,3 +370,8 @@ Each item is roughly one PR. API items come first because the other two repos de
   - Public responses fill in the fallbacks: an excerpt from the text, the SEO title from the title, a description from the excerpt or the text.
   - An image block whose image is gone is left out of public pages and the preview.
   - The preview shows the draft as it is when the page loads, for any status. Its token is a JWT with a key derived from `JWT_SECRET`, so there is no new setting (section 8).
+- **2026-11-06, compose phase A (item 8):**
+  - DNS `A` records `app` and `media` added. `api` and `front` answer on both hosts, including their HTTP-to-HTTPS routers; `front` uses `${FRONT_IMAGE}`.
+  - The `media` container mounts the volume at `/srv/media` instead of nginx's default folder, and its nginx config is `media/default.conf`.
+  - `CORS_ORIGIN` lists both hosts until phase B.
+  - The production compose file and the nginx config are versioned in `theindex-dev` (sections 11, 12, 13).

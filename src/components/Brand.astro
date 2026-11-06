@@ -1,0 +1,40 @@
+---
+// The official red logo; it works on the dark header in both themes (as in the portal).
+import { t } from '../i18n';
+---
+
+<a class="brand" href="/" aria-label={t('header.homeLink')}>
+  <img
+    class="brand__logo"
+    src="/brand/the-index-logo-red.png"
+    alt=""
+    width="640"
+    height="270"
+  />
+</a>
+
+<style>
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+  }
+
+  .brand:focus-visible {
+    outline-color: var(--nav-accent);
+  }
+
+  .brand__logo {
+    display: block;
+    width: auto;
+    height: 2.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .brand__logo {
+      height: 3rem;
+    }
+  }
+</style>

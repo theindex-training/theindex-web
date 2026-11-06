@@ -1,0 +1,520 @@
+// Chalk & Iron design system for the public site.
+//
+// Copied from theindex-front/src/styles.scss, which stays the source of truth (see CLAUDE.md,
+// "Design system"). The token block and the base element styles are verbatim; below them are only
+// the global classes this site uses. When a token changes in the portal, copy it here too.
+
+@mixin light-theme {
+  color-scheme: light;
+
+  --bg: #f2f1ee;
+  --surface: #ffffff;
+  --surface-2: #e9e7e1;
+  --text: #121211;
+  --muted: #5a5954;
+  --border: #dcd9d2;
+  --border-strong: #8a8880;
+  --accent: #800000;
+  --on-accent: #ffffff;
+  --accent-soft: #f3e3e1;
+  --accent-text: #800000;
+  --accent-border: #dcaaa6;
+  --success: #256b3a;
+  --success-soft: #e2f0e5;
+  --success-border: #a9d3b3;
+  --warning: #8a4a00;
+  --warning-soft: #fbefd5;
+  --warning-border: #edcb8a;
+  --danger: #b42318;
+  --on-danger: #ffffff;
+  --danger-soft: #fce8e6;
+  --danger-border: #f1b4ac;
+  --nav-bg: #121211;
+  --nav-text: #b5b3ac;
+  --nav-text-strong: #f2f1ee;
+  --nav-surface: #262622;
+  --nav-border: #3a3934;
+  --nav-accent: #ff4a3d;
+  --scrim: rgba(18, 18, 17, 0.55);
+  --shadow-sm: 0 1px 2px rgba(18, 18, 17, 0.06);
+  --shadow-md: 0 10px 24px rgba(18, 18, 17, 0.12);
+}
+
+@mixin dark-theme {
+  color-scheme: dark;
+
+  --bg: #0e0e0d;
+  --surface: #191917;
+  --surface-2: #26261f;
+  --text: #f2f1ee;
+  --muted: #a3a19a;
+  --border: #2d2c29;
+  --border-strong: #6e6c66;
+  --accent: #ee4238;
+  --on-accent: #0e0e0d;
+  --accent-soft: #331412;
+  --accent-text: #ff7a70;
+  --accent-border: #6b2420;
+  --success: #7bd69a;
+  --success-soft: #16301f;
+  --success-border: #2c5a3a;
+  --warning: #f2be5c;
+  --warning-soft: #33270f;
+  --warning-border: #5e4718;
+  --danger: #ff8f84;
+  --on-danger: #1a0d0b;
+  --danger-soft: #3a1714;
+  --danger-border: #6b2a24;
+  --nav-bg: #070707;
+  --nav-text: #a3a19a;
+  --nav-text-strong: #f2f1ee;
+  --nav-surface: #1c1c1a;
+  --nav-border: #2d2c29;
+  --nav-accent: #ff4a3d;
+  --scrim: rgba(0, 0, 0, 0.65);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+
+:root {
+  // Typography
+  // Sofia Sans has full Cyrillic with Bulgarian letterforms; Barlow had no Cyrillic on Google Fonts.
+  --font-heading:
+    'Sofia Sans Condensed', 'Arial Narrow', sans-serif-condensed, sans-serif;
+  --font-body:
+    'Sofia Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --heading-tracking: 0.02em;
+  --label-tracking: 0.08em;
+
+  --text-xs: 0.75rem; // 12px
+  --text-sm: 0.875rem; // 14px
+  --text-base: 1rem; // 16px
+  --text-lg: 1.125rem; // 18px
+  --text-xl: 1.375rem; // 22px
+  --text-2xl: 1.75rem; // 28px
+  --text-3xl: 2.25rem; // 36px
+  --text-4xl: clamp(2.5rem, 1.9rem + 2.5vw, 3.5rem); // 40-56px, page titles
+
+  // Spacing (4px base)
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  // Radii
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  // Interaction
+  --touch-target: 44px;
+  --control-height: 3rem; // text inputs, selects, form buttons
+  --control-height-lg: 3.25rem; // search fields, page header action
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  --transition-fast: 0.15s ease;
+
+  @include light-theme;
+}
+
+// The inline script in index.html and ThemeService set data-theme on <html>.
+:root[data-theme='dark'] {
+  @include dark-theme;
+}
+
+// Fallback when the script hasn't run (e.g. JS disabled): follow the OS.
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    @include dark-theme;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--heading-tracking);
+  line-height: 1.05;
+  color: var(--text);
+}
+
+h1 {
+  font-size: var(--text-4xl);
+}
+
+h2 {
+  font-size: var(--text-2xl);
+}
+
+h3 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+h4,
+h5,
+h6 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+a {
+  color: var(--accent-text);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+strong,
+b {
+  font-weight: 600;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+// Touch-target floor for every button.
+button {
+  min-height: var(--touch-target);
+}
+
+// Base form fields. Component styles can refine these; checkboxes and radios keep native rendering.
+input:not(
+  [type='checkbox'],
+  [type='radio'],
+  [type='range'],
+  [type='file'],
+  [type='color']
+),
+select,
+textarea {
+  min-height: var(--touch-target);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--surface);
+  color: var(--text);
+  padding: var(--space-2) var(--space-3);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+textarea {
+  min-height: calc(var(--touch-target) * 2);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled,
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--accent);
+}
+
+// One focus treatment everywhere: a 2px accent ring offset from the element.
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+// Hides content visually but keeps it for screen readers (and focusable, for inputs).
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Modal dialogs (e.g. the mobile nav sheet) lock page scrolling while open.
+html:has(dialog[open]) {
+  overflow: hidden;
+}
+
+// ---------------------------------------------------------------------------
+// Shared global classes (verbatim from the portal)
+// ---------------------------------------------------------------------------
+
+// Buttons for page content (links or <button>). `ui-button` is the full-width form variant.
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: var(--label-tracking);
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn--primary:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--text));
+}
+
+.btn--secondary {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.btn--secondary:hover {
+  background: var(--surface-2);
+}
+
+.btn--danger {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.btn--danger:hover {
+  border-color: var(--danger);
+}
+
+// Solid fill for the confirm button of a destructive action (e.g. "Deactivate").
+.btn--danger-solid {
+  background: var(--danger);
+  color: var(--on-danger);
+}
+
+.btn--danger-solid:hover {
+  background: color-mix(in srgb, var(--danger) 88%, var(--text));
+}
+
+.btn--ghost {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.btn--ghost:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+// Inline feedback banners. Use role="alert" for errors, role="status" for success.
+.notice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.notice--success {
+  border-color: var(--success-border);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.notice--warning {
+  border-color: var(--warning-border);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.notice--danger {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+// Money and other figures that should line up in columns.
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.text-danger {
+  color: var(--danger);
+}
+
+.solo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: min(30rem, 100%);
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.solo-card__code {
+  margin: var(--space-4) 0 0;
+  color: var(--accent-text);
+  font-family: var(--font-heading);
+  font-size: 5rem;
+  font-weight: 700;
+  line-height: 0.9;
+}
+
+.solo-card__title {
+  margin: 0;
+  font-size: var(--text-3xl);
+}
+
+.solo-card__text {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public site only
+// ---------------------------------------------------------------------------
+
+// Page shell: header, main and footer, with the footer kept at the bottom of short pages.
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+main {
+  flex: 1;
+  padding-block: var(--space-8) var(--space-12);
+}
+
+// The skip link focuses <main>; it has no outline of its own when focused that way.
+main:focus {
+  outline: none;
+}
+
+// Centered content column with the 16px phone gutter (24px from 768px).
+.container {
+  width: min(100% - 2 * var(--space-4), 72rem);
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .container {
+    width: min(100% - 2 * var(--space-6), 72rem);
+  }
+}
+
+// "Skip to content": the first tab stop, visible only while focused.
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 10;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}

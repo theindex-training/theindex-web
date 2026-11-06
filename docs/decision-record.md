@@ -204,7 +204,7 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 ## 9. Back office (theindex-front)
 
 - **Routes** (`roleGuard`, `data.roles: ['ADMIN']`), lazy-loaded so the editor never touches the initial bundle:
-  - `/content/articles`: list with a status filter and search, plus "New article".
+  - `/content/articles`: list with a status filter and search, plus "New article" (done, theindex-front#80).
   - `/content/articles/new`: asks for the title (the API creates a draft with one), creates the draft and opens it in the editor.
   - `/content/articles/:id`: the editor, full screen outside the portal's navigation shell (its own top-level route, with the same guards plus a leave guard that saves first).
   - `/content/categories`: list, create, edit and delete (`/content/categories/new`, `/:id/edit`, `/:id/delete`). No details page: a row opens the edit page, which links to the delete page.
@@ -330,7 +330,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 7 | api | Public articles and categories, search, sitemap feed, preview tokens | 6 | Done (theindex-api#55) |
 | 8 | infra | DNS records, compose phase A (incl. the media volume, settings and container) | | Done (2026-11-06, on the VPS; templates in `theindex-dev`) |
 | 9 | front | `/content` area, navigation, categories pages | 5 | Done (theindex-front#79) |
-| 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | Done (theindex-front) |
+| 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | Done (theindex-front#80) |
 | 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | |
 | 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | |
 | 13 | web | Home, article list, category pages, pagination, search | 12 | |
@@ -383,7 +383,7 @@ Each item is roughly one PR. API items come first because the other two repos de
   - The categories have list, create, edit and delete pages, with no details page.
   - On create, the slug and the order are optional, so the API makes the slug from the name and puts the category last. On edit, both are required.
   - The API's 409s (a taken name or slug, a slug locked by published articles) are shown as they come (section 9).
-- **2026-11-06, back office articles (item 10, theindex-front):**
+- **2026-11-06, back office articles (item 10, theindex-front#80):**
   - `/content` opens on the articles; "New article" asks for the title first, since the API creates a draft with one.
   - The editor is full screen outside the portal's navigation shell, with a leave guard that saves first.
   - Autosave sends only the changed fields, one request at a time; a field over its limit waits while the rest is saved; a 409 stops it until a reload.

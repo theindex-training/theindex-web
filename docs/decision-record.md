@@ -279,7 +279,7 @@ Every router keeps its `-http` twin with the HTTPS redirect, `entrypoints`, `tls
 1. Spaceship DNS: add `A` records `app` and `media` with the same IP as `@`. Wait until they resolve.
 2. Compose phase A: `api` and `front` answer on **both** `theindex.training` and `app.theindex.training` (`Host(...) || Host(...)`). Add the media volume and container. Use `${FRONT_IMAGE}`. Check `app.theindex.training` end to end.
 3. Ship the API and back-office work. Admins write the first articles on `app.`.
-4. Compose phase B: `theindex.training` → `web`. `front` and `api` keep only `app.`. Set the portal's `publicSiteUrl`.
+4. Compose phase B: `theindex.training` → `web`. `front` and `api` keep only `app.`. Set the portal's `publicSiteUrl`. In `theindex-web`, set the Actions variable `DEPLOY_ENABLED=true` so merges to `main` redeploy the site (until then its pipeline builds and pushes the image but doesn't deploy).
 5. Google Search Console: verify the domain with a TXT record in Spaceship and submit `https://theindex.training/sitemap.xml`.
 
 **Backups:** Contabo's daily instance backups include the database and the media volume. A nightly `pg_dump` is recommended on top (a snapshot of a running Postgres isn't guaranteed to restore cleanly). **Never print or share `traefik/acme.json`**: it holds the certificates' private keys.

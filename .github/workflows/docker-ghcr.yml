@@ -1,0 +1,175 @@
+name: Build and push Docker images (GHCR)
+
+# One pipeline, laid out like theindex-front's and theindex-api's:
+# - every PR (any base branch): lint, type check, unit tests, production build, the E2E journeys and a
+#   Docker build (not pushed); deploy is skipped;
+# - push to main (or a v* tag): the same checks, then build and push the image, then deploy.
+# The image is never pushed or deployed unless lint and both test jobs pass.
+# To block merging on red checks, mark "lint", "test-and-build", "e2e" and "build-web" as required in
+# the branch protection settings for main.
+#
+# Deploy is off until the VPS runs this site: it only runs when the repository variable DEPLOY_ENABLED
+# is "true" (Settings > Secrets and variables > Actions > Variables). Set it once docker-compose.yml on
+# the VPS has the `web` service (docs/decision-record.md, section 11).
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]   # optional: push a v1.0.0 tag to publish a versioned image
+  pull_request:   # every PR (any base branch): runs the checks and a Docker build; push/deploy are skipped
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  # A new push to a PR cancels its older run; runs on main queue instead, so a deploy is never cut off.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+  ASTRO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (no --fix; any error or warning fails)
+        run: npm run lint:check
+
+      - name: Formatting (Prettier, .astro and SCSS included)
+        run: npm run format:check
+
+      - name: Type check (astro check, e2e/ included)
+        run: npm run check
+
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+  e2e:
+    # Journeys in a real browser against the production build: Playwright builds the site and starts
+    # the Node server itself (playwright.config.ts). No page reads from the API yet.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E journeys
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  build-web:
+    # On PRs the image is built but not pushed, so a broken Dockerfile shows up before main.
+    # On main and tags it is pushed, after the checks pass.
+    needs: [lint, test-and-build, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/theindex-web
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+
+      - name: Build and push (Web)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    # Listed explicitly so a red lint or test job always blocks the deploy.
+    needs: [lint, test-and-build, e2e, build-web]
+    if: github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          # Only the site's container: a site deploy never restarts the API, the portal or the database.
+          script: |
+            cd /opt/theindex
+            docker compose pull web
+            docker compose up -d web

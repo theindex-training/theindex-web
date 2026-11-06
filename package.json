@@ -11,8 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "lint": "eslint . --fix",
-    "lint:check": "eslint . --max-warnings 0",
+    "lint": "astro sync && eslint . --fix",
+    "lint:check": "astro sync && eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

@@ -290,7 +290,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 
 | # | Repo | Item | Depends on |
 |---|---|---|---|
-| 1 | web | Scaffold: Astro, tokens, fonts, layout, header/footer, theme switch, lint/format/tests, Dockerfile, `CLAUDE.md` | |
+| 1 | web | Scaffold: Astro, tokens, fonts, layout, header/footer, theme switch, 404 page, cache and security headers, lint/format/tests, Dockerfile, `CLAUDE.md` | |
 | 2 | web | CI workflow (needs the owner's approval) | 1 |
 | 3 | api | Slug transliteration util | |
 | 4 | api | Media: upload, processing, storage, library | |
@@ -303,7 +303,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 |
 | 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 |
 | 13 | web | Home, article list, category pages, pagination, search | 12 |
-| 14 | web | Sitemap, RSS, robots, 404/503, `/login` redirect, preview route | 12 |
+| 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 |
 | 15 | infra | Compose phase B, Search Console | 8, 11, 14 |
 
 ## 13. Phase 2 and later

@@ -1,0 +1,12 @@
+# Generated or vendored
+package-lock.json
+dist/
+.astro/
+playwright-report/
+test-results/
+coverage/
+
+# Left as written: prose (Prettier rewraps Markdown tables and lists) and the deploy pipeline
+*.md
+.github/
+docs/

@@ -1,0 +1,7 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    // TypeScript 6 defaults `types` to []; the server code and the tests use Node's APIs.
+    "types": ["node"]
+  }
+}

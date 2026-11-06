@@ -1,0 +1,73 @@
+---
+// Fonts are self-hosted from Fontsource (docs/decision-record.md, section 10), Latin and Cyrillic
+// subsets only. Body: Sofia Sans 400 (+ italic), 500, 600. Headings: Sofia Sans Condensed 600, 700.
+import '@fontsource/sofia-sans/cyrillic-400.css';
+import '@fontsource/sofia-sans/latin-400.css';
+import '@fontsource/sofia-sans/cyrillic-400-italic.css';
+import '@fontsource/sofia-sans/latin-400-italic.css';
+import '@fontsource/sofia-sans/cyrillic-500.css';
+import '@fontsource/sofia-sans/latin-500.css';
+import '@fontsource/sofia-sans/cyrillic-600.css';
+import '@fontsource/sofia-sans/latin-600.css';
+import '@fontsource/sofia-sans-condensed/cyrillic-600.css';
+import '@fontsource/sofia-sans-condensed/latin-600.css';
+import '@fontsource/sofia-sans-condensed/cyrillic-700.css';
+import '@fontsource/sofia-sans-condensed/latin-700.css';
+import '../styles/global.scss';
+
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import { DEFAULT_LOCALE, t } from '../i18n';
+
+interface Props {
+  /** Page title; shown as "<title> | The Index" in the browser tab. */
+  title: string;
+  /** Meta description: one or two sentences about the page. */
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const appName = t('common.appName');
+const documentTitle = title === appName ? title : `${title} | ${appName}`;
+---
+
+<!doctype html>
+<html lang={Astro.currentLocale ?? DEFAULT_LOCALE}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{documentTitle}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <script is:inline>
+      // Apply the saved theme before first paint to avoid a flash of the wrong theme.
+      // Mirrors src/scripts/theme.ts (and the portal's index.html), which takes over later.
+      (function () {
+        var theme = null;
+        try {
+          theme = localStorage.getItem('theme');
+        } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') {
+          theme =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip-link btn btn--primary" href="#main">
+      {t('common.skipToContent')}
+    </a>
+    <SiteHeader />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <SiteFooter />
+  </body>
+</html>

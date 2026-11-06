@@ -1,0 +1,35 @@
+---
+import { t } from '../i18n';
+import { currentYear } from '../lib/dates';
+import ThemeSwitch from './ThemeSwitch.astro';
+---
+
+<footer class="site-footer">
+  <div class="container site-footer__inner">
+    <p class="site-footer__copy">
+      {t('footer.copyright', { year: String(currentYear()) })}
+    </p>
+    <ThemeSwitch />
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    background: var(--nav-bg);
+    color: var(--nav-text);
+  }
+
+  .site-footer__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding-block: var(--space-6);
+  }
+
+  .site-footer__copy {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+</style>

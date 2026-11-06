@@ -1,0 +1,29 @@
+{
+  "common": {
+    "appName": "The Index",
+    "skipToContent": "Към съдържанието",
+    "theme": {
+      "label": "Тема",
+      "light": "Светла",
+      "dark": "Тъмна",
+      "system": "Авто"
+    }
+  },
+  "header": {
+    "homeLink": "The Index, начало",
+    "login": "Вход"
+  },
+  "footer": {
+    "copyright": "© {year} The Index"
+  },
+  "home": {
+    "title": "Статии",
+    "description": "Статии от екипа на The Index.",
+    "lead": "Скоро тук ще публикуваме статии от екипа на The Index."
+  },
+  "notFound": {
+    "title": "Страницата не е намерена",
+    "text": "Страницата, която търсите, не съществува или е преместена.",
+    "back": "Към началото"
+  }
+}

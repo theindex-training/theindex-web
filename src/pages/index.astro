@@ -1,0 +1,25 @@
+---
+// Placeholder until the article list exists (backlog item 13 in docs/decision-record.md).
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t } from '../i18n';
+---
+
+<BaseLayout title={t('home.title')} description={t('home.description')}>
+  <section class="container home">
+    <h1 class="home__title">{t('home.title')}</h1>
+    <p class="home__lead">{t('home.lead')}</p>
+  </section>
+</BaseLayout>
+
+<style>
+  .home__title {
+    margin: 0 0 var(--space-4);
+  }
+
+  .home__lead {
+    max-width: 40rem;
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-lg);
+  }
+</style>

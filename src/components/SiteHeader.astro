@@ -1,0 +1,57 @@
+---
+import { t } from '../i18n';
+import { getConfig } from '../lib/config';
+import Brand from './Brand.astro';
+
+const { appUrl } = getConfig();
+---
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <Brand />
+    <a class="site-header__login" href={appUrl}>
+      {t('header.login')}
+    </a>
+  </div>
+</header>
+
+<style>
+  /* The dark "iron" bar of the portal's navigation shell, so it looks the same in both themes. */
+  .site-header {
+    background: var(--nav-bg);
+    color: var(--nav-text);
+  }
+
+  .site-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    min-height: 4.5rem;
+  }
+
+  .site-header__login {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-4);
+    border: 1px solid var(--nav-border);
+    border-radius: var(--radius-lg);
+    color: var(--nav-text-strong);
+    font-family: var(--font-heading);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: var(--label-tracking);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: background-color var(--transition-fast);
+  }
+
+  .site-header__login:hover {
+    background: var(--nav-surface);
+  }
+
+  .site-header__login:focus-visible {
+    outline-color: var(--nav-accent);
+  }
+</style>

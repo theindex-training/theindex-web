@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t } from '../i18n';
+---
+
+<BaseLayout title={t('notFound.title')}>
+  <div class="container not-found">
+    <div class="solo-card">
+      <p class="solo-card__code" aria-hidden="true">
+        404
+      </p>
+      <h1 class="solo-card__title">{t('notFound.title')}</h1>
+      <p class="solo-card__text">{t('notFound.text')}</p>
+      <a class="btn btn--primary" href="/">
+        {t('notFound.back')}
+      </a>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .not-found {
+    display: grid;
+    place-items: center;
+  }
+</style>

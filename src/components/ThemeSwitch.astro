@@ -1,0 +1,77 @@
+---
+// Light / Dark / Auto, built from native radios so arrow keys work (as in the portal).
+import { t } from '../i18n';
+
+// "system" is checked in the HTML; the script checks the stored choice once it runs.
+const options = [
+  { value: 'light', label: t('common.theme.light') },
+  { value: 'dark', label: t('common.theme.dark') },
+  { value: 'system', label: t('common.theme.system') },
+];
+---
+
+<fieldset class="theme-switch" data-theme-switch>
+  <legend class="visually-hidden">{t('common.theme.label')}</legend>
+  {options.map((option) => (
+    <label class="theme-switch__option">
+      <input
+        class="visually-hidden"
+        type="radio"
+        name="theme"
+        value={option.value}
+        checked={option.value === 'system'}
+      />
+      {option.label}
+    </label>
+  ))}
+</fieldset>
+
+<script>
+  import { initThemeSwitches } from '../scripts/theme';
+
+  initThemeSwitches(document, window);
+</script>
+
+<style>
+  /* Styled for the dark footer, like the portal's switch on the navigation shell. */
+  .theme-switch {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-1);
+    width: min(100%, 20rem);
+    margin: 0;
+    padding: var(--space-1);
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--nav-surface);
+  }
+
+  .theme-switch__option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--touch-target);
+    border-radius: var(--radius-md);
+    color: var(--nav-text);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background-color var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  .theme-switch__option:hover {
+    color: var(--nav-text-strong);
+  }
+
+  .theme-switch__option:has(:checked) {
+    background: var(--nav-text-strong);
+    color: var(--nav-bg);
+  }
+
+  .theme-switch__option:has(:focus-visible) {
+    outline: 2px solid var(--nav-accent);
+    outline-offset: 2px;
+  }
+</style>

@@ -24,6 +24,8 @@ npm test               # unit tests once (Vitest); `npm run test:watch` for watc
 npm run e2e            # Playwright journeys; builds and starts the production server itself
 npm run lint:check     # ESLint without fixing; fails on any error or warning (CI gate)
 npm run lint           # NOTE: runs eslint --fix and rewrites files
+# Both lint scripts run `astro sync` first: type-aware rules need Astro's generated types (.astro/),
+# which a fresh checkout doesn't have until a sync, check or build.
 npm run format:check   # Prettier check (CI gate)
 npm run format         # prettier --write .
 ```
@@ -100,7 +102,7 @@ The look is the portal's "Chalk & Iron" design system. **theindex-front's `CLAUD
 
 ## Rules
 - Don't push to `main`; work on a branch and open a PR.
-- **Ask before adding or changing `.github/workflows/` (deploy pipeline) or the `Dockerfile`.** The CI workflow is backlog item 2 and needs the owner's approval.
+- **Ask before changing `.github/workflows/` (deploy pipeline) or the `Dockerfile`.** `docker-ghcr.yml` runs, on every PR, a `lint` job (`lint:check`, `format:check`, `check`), a `test-and-build` job (unit tests, production build), an `e2e` job (the journeys) and `build-web` (Docker build, not pushed). On `main` and `v*` tags, once those pass, `build-web` pushes the image to GHCR and `deploy` redeploys only the `web` service on the VPS over SSH. Deploy runs only while the repository variable `DEPLOY_ENABLED` is `true`, which is set at the cutover (decision record, section 11).
 - Never hard-code hosts or URLs of the other services; use `getConfig()`.
 - Never hard-code colors (use tokens) or user-facing text (use `t()`).
 - Keep page responses free of secrets and personal data: never render an author's email.

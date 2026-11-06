@@ -2,7 +2,7 @@
 
 The reference for building the public site of The Index (`theindex-web`) and the content features it needs in `theindex-api` and `theindex-front`. It records what was decided, why, and what the first version (MVP) contains. Update it when a decision changes; don't let the code and this file disagree.
 
-- **Status:** agreed, MVP in progress (items 1–6 done, see section 12)
+- **Status:** agreed, MVP in progress (items 1–7 done, see section 12)
 - **Decided:** 2026-11-05; changes since then are listed in section 15
 - **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates; may become `theindex-infra`)
 
@@ -170,22 +170,29 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 | `POST /api/articles/:id/unpublish` | `PUBLISHED` → `UNPUBLISHED` |
 | `POST /api/articles/:id/discard-draft` `{ baseRevision }` | Reset the draft to the published version; 409 if stale |
 | `DELETE /api/articles/:id` | Permanent; 409 when `PUBLISHED` |
-| `POST /api/articles/:id/preview-token` | Signed token, 30 minutes, for `/preview` on the site |
+| `POST /api/articles/:id/preview-token` | `{ token, expiresAt }`: a signed token, 30 minutes, for `/preview` on the site |
 | `GET/POST/PATCH/DELETE /api/article-categories[/:id]` | Category management (done, theindex-api#52) |
 | `POST /api/media` (multipart: `file`, `altText`) | Upload: JPEG, PNG or WebP, up to 15 MB, checked by decoding (not by extension); damaged files are a 400, larger ones a 413. Auto-rotate, strip EXIF (phone photos carry GPS), make variants (done, theindex-api#51) |
 | `GET /api/media?page&pageSize`, `GET /api/media/:id`, `PATCH /api/media/:id` `{ altText }` | Media library. No delete in the MVP (articles may use the image) |
 
-**Public (no auth, published content only)**
+**Public (no auth, published content only)** (done, theindex-api#55)
 | Method and path | Purpose |
 |---|---|
-| `GET /api/public/articles?category&q&page&pageSize` | Summaries, newest first. `q` searches title, excerpt and text with `ILIKE` (Postgres has no Bulgarian full-text config; fine at this size) |
-| `GET /api/public/articles/:slug` | Article with blocks, image variants resolved to URLs, categories |
-| `GET /api/public/article-categories` | Categories with at least one published article (item 7) |
-| `GET /api/public/article-categories/:slug` | One category; 404 when it has no published article (item 7) |
-| `GET /api/public/sitemap` | Slugs and `lastmod` for articles and categories |
-| `GET /api/public/preview?token=` | Draft rendered for preview |
+| `GET /api/public/articles?category&q&page&pageSize` | Summaries, newest first publish first (an update doesn't move an article). `category` is a category slug (unknown: empty page). `q` searches title, excerpt and text with `ILIKE`, ignoring case (Postgres has no Bulgarian full-text config; fine at this size) |
+| `GET /api/public/articles/:slug` | Article with blocks, image variants resolved to URLs, categories; 404 unless published |
+| `GET /api/public/article-categories` | Categories with at least one published article, in `sortOrder`, with `articleCount` |
+| `GET /api/public/article-categories/:slug` | One category; 404 when it has no published article |
+| `GET /api/public/sitemap` | Slugs and `lastmod` for articles (last publish) and categories (the later of the category's own change and its articles' last publish) |
+| `GET /api/public/preview?token=` | The draft as it is now (so a reload shows the latest autosave), any status; `no-store`; 401 for a bad or expired token |
 
-- Lists return `{ items, total, page, pageSize }` (page size up to 50).
+- Lists return `{ items, total, page, pageSize }` (page size 12 by default, up to 50; `page` up to 10 000).
+- **Public response shapes** (`src/public-content/public-content.ts` in theindex-api is the reference; the site's stub API mirrors it):
+  - Summary: `slug`, `title`, `excerpt` (the excerpt, or the start of the text, up to 200 characters), `featuredImage`, `categories` (`{ slug, name }`, in `sortOrder`), `publishedAt` (first publish: `datePublished`), `updatedAt` (last publish: `dateModified`).
+  - Article: the summary plus `language`, `seoTitle` (falls back to the title), `description` (SEO description, else the excerpt, else the start of the text, up to 160 characters) and `content.blocks`.
+  - Image (featured or in a block): `url` (master), `width`, `height`, `altText`, `variants` (`[{ url, width, height }]`, WebP, narrowest first) and `ogImage` (1200×630). An image block is `{ type: 'image', data: { image, caption } }`; one whose image no longer exists is left out. The other blocks are stored ones without the editor's ids (YouTube: `videoId`).
+  - Never in a public response: ids, the draft, revisions, account ids, file names.
+  - Preview: the article shape from the draft, plus `preview: true` and `status`; `slug` (published or chosen, else null) and `publishedAt` can be null, and `updatedAt` is the last autosave.
+- **Preview tokens** are JWTs signed with a key derived from `JWT_SECRET` for this purpose only, with their own audience, so a preview token never works as a login token and the other way round. No new setting.
 - **Publish validation:** title 1–200 characters, at least one block, and the featured image, image blocks and categories still exist; a chosen slug isn't reserved or taken. A failure answers 400 listing every problem. Length limits (excerpt 300, SEO title 70, SEO description 160) apply on every draft save. Otherwise draft saves validate structure only, so incomplete work can always be saved.
 - **Autosave** merges only the sent fields into the stored draft, inside the conditional `UPDATE` on `draftRevision`. A stale tab gets 409, and a change made to other fields meanwhile isn't written back over.
 - Each lifecycle step locks the article row in a transaction.
@@ -305,7 +312,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 4 | api | Media: upload, processing, storage, library | | Done (theindex-api#51); uploads answer 503 until item 8 |
 | 5 | api | Article categories: admin CRUD | 3 | Done (theindex-api#52) |
 | 6 | api | Articles: entity, draft and lifecycle, block validation and sanitizing, admin endpoints; category slug lock and category delete cleanup | 3, 4, 5 | Done (theindex-api#53, #54) |
-| 7 | api | Public articles and categories, search, sitemap feed, preview tokens | 6 | |
+| 7 | api | Public articles and categories, search, sitemap feed, preview tokens | 6 | Done (theindex-api#55) |
 | 8 | infra | DNS records, compose phase A (incl. the media volume, settings and container) | | |
 | 9 | front | `/content` area, navigation, categories pages | 5 | |
 | 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | |
@@ -346,3 +353,8 @@ Each item is roughly one PR. API items come first because the other two repos de
   - Autosave merges only the sent fields into the draft.
   - Image and YouTube blocks are stored as `mediaId`/`videoId`; the back office maps them back to the editor's data.
   - The `article_category_links` table holds the published categories (sections 4, 6, 7, 8, 12).
+- **2026-11-06, public endpoints (theindex-api#55):**
+  - Public lists are ordered by first publish, so an update doesn't move an article to the top; the page size defaults to 12.
+  - Public responses fill in the fallbacks: an excerpt from the text, the SEO title from the title, a description from the excerpt or the text.
+  - An image block whose image is gone is left out of public pages and the preview.
+  - The preview shows the draft as it is when the page loads, for any status. Its token is a JWT with a key derived from `JWT_SECRET`, so there is no new setting (section 8).

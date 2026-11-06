@@ -2,7 +2,7 @@
 
 The reference for building the public site of The Index (`theindex-web`) and the content features it needs in `theindex-api` and `theindex-front`. It records what was decided, why, and what the first version (MVP) contains. Update it when a decision changes; don't let the code and this file disagree.
 
-- **Status:** agreed, MVP in progress (items 1–5 done, see section 12)
+- **Status:** agreed, MVP in progress (items 1–6 done, see section 12)
 - **Decided:** 2026-11-05; changes since then are listed in section 15
 - **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates; may become `theindex-infra`)
 
@@ -81,7 +81,7 @@ flowchart LR
 - Examples: "Как да започнем с КросФит" → `kak-da-zapochnem-s-krosfit`; "Защо клековете са важни?" → `zashto-klekovete-sa-vazhni`.
 - Unique per language. On a clash, add `-2`, `-3`… (shortening the base at a word so the result still fits). Reserved for articles: `category`.
 - A title or name that gives no slug at all (e.g. only emoji) uses a fallback: `kategoria` for categories; the article fallback is chosen in item 6.
-- An admin can edit the slug (Latin `a-z`, `0-9`, `-` only) **until the first publish; after that it is fixed**, so shared links never break. Changing published slugs, with redirects, is phase 2.
+- An article's slug is **set at the first publish**, from the final title, or from a slug the admin chose in the draft (Latin `a-z`, `0-9`, `-` only). **After that it is fixed**, so shared links never break. A chosen slug that is reserved or taken is one of the publish problems (400). The fallback is `statia`. Changing published slugs, with redirects, is phase 2.
 - A category slug is generated once and kept when the category is renamed; an admin can change it until a published article uses the category (the lock comes with item 6).
 
 ## 5. Article lifecycle and permissions
@@ -109,10 +109,10 @@ New tables only; nothing existing changes. `synchronize` adds them (no migration
 | `language` | varchar(8), default `bg` | |
 | `translationGroupId` | uuid, null | Links versions of the same article in different languages (later) |
 | `status` | enum `DRAFT` / `PUBLISHED` / `UNPUBLISHED` | |
-| `slug` | varchar(80) | Unique with `language` |
+| `slug` | varchar(80), null | Unique with `language`; null until the first publish |
 | `title`, `excerpt`, `content` (jsonb), `featuredMediaId`, `seoTitle`, `seoDescription` | | **Published version.** Empty until the first publish. |
 | `plainText` | text | Derived from `content` on publish: search, description fallback, digest emails |
-| `draft` | jsonb | **Working copy:** `{ title, excerpt, content, featuredMediaId, categoryIds, seoTitle, seoDescription }` |
+| `draft` | jsonb | **Working copy:** `{ title, excerpt, content, featuredMediaId, categoryIds, seoTitle, seoDescription, slug }` (`slug`: a chosen slug, before the first publish only) |
 | `draftRevision` | int | Incremented on every draft save; used to detect two tabs editing at once (409) |
 | `hasUnpublishedChanges` | boolean | Draft differs from the published version |
 | `firstPublishedAt`, `lastPublishedAt`, `unpublishedAt` | timestamptz, null | `datePublished` / `dateModified` for SEO |
@@ -151,7 +151,8 @@ Allowed blocks in the MVP. The API rejects any other type (400) and normalizes w
 | Delimiter | `{}` | `<hr>` |
 
 - Inline HTML is sanitized with an allowlist (`b`, `i`, `a[href]`, `br`; links only `http`, `https`, `mailto`) when the API saves, and again when the site renders.
-- Editor.js's own output wrapper (`{ time, blocks, version }`) is kept, so the editor can load it back unchanged.
+- Editor.js's own output wrapper (`{ time, blocks, version }`) and the tool names (`paragraph`, `header`, `list`, `quote`, `image`, `embed`, `delimiter`) are kept. The back office maps the image and YouTube blocks back to the editor's tool data: the image URL comes from the media library, and the YouTube URLs are built from the id.
+- Normalizing is idempotent: content the API returned saves back unchanged.
 - The JSON body limit goes from Express's default 100 kB to 1 MB (a change in `main.ts`).
 
 ## 8. API changes (theindex-api)
@@ -162,12 +163,12 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 | Method and path | Purpose |
 |---|---|
 | `GET /api/articles?status&categoryId&search&page&pageSize` | Back-office list (draft title, status, `hasUnpublishedChanges`, dates) |
-| `POST /api/articles` `{ title }` | Create a draft; generates the slug |
+| `POST /api/articles` `{ title }` | Create a draft (the slug comes at the first publish) |
 | `GET /api/articles/:id` | Full article: published version and draft |
 | `PATCH /api/articles/:id/draft` `{ baseRevision, …fields }` | Autosave. 409 if `baseRevision` is stale |
-| `POST /api/articles/:id/publish` | Validate and copy the draft over the published version (first publish and "Update") |
+| `POST /api/articles/:id/publish` `{ baseRevision }` | Validate and copy the draft at that revision over the published version (first publish, republish and "Update"); 409 if stale |
 | `POST /api/articles/:id/unpublish` | `PUBLISHED` → `UNPUBLISHED` |
-| `POST /api/articles/:id/discard-draft` | Reset the draft to the published version |
+| `POST /api/articles/:id/discard-draft` `{ baseRevision }` | Reset the draft to the published version; 409 if stale |
 | `DELETE /api/articles/:id` | Permanent; 409 when `PUBLISHED` |
 | `POST /api/articles/:id/preview-token` | Signed token, 30 minutes, for `/preview` on the site |
 | `GET/POST/PATCH/DELETE /api/article-categories[/:id]` | Category management (done, theindex-api#52) |
@@ -185,7 +186,10 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 | `GET /api/public/preview?token=` | Draft rendered for preview |
 
 - Lists return `{ items, total, page, pageSize }` (page size up to 50).
-- **Publish validation:** title 1–200 characters, valid unique slug, at least one block, excerpt up to 300, SEO title up to 70, SEO description up to 160, existing categories and featured image. Draft saves validate structure only, so incomplete work can always be saved.
+- **Publish validation:** title 1–200 characters, at least one block, and the featured image, image blocks and categories still exist; a chosen slug isn't reserved or taken. A failure answers 400 listing every problem. Length limits (excerpt 300, SEO title 70, SEO description 160) apply on every draft save. Otherwise draft saves validate structure only, so incomplete work can always be saved.
+- **Autosave** merges only the sent fields into the stored draft, inside the conditional `UPDATE` on `draftRevision`. A stale tab gets 409, and a change made to other fields meanwhile isn't written back over.
+- Each lifecycle step locks the article row in a transaction.
+- `GET /api/articles/:id` returns `published` (with the published `categoryIds`) and `draft`.
 - **New config** (`.env.example`): `MEDIA_STORAGE_DIR` (`/data/media`), `MEDIA_PUBLIC_URL` (`https://media.theindex.training`), `MEDIA_MAX_UPLOAD_MB` (15). They are read on first use: in production without them, media requests answer 503, but the API starts and everything else works. In development they default to `./media-storage`, which the API serves at `/media-files`.
 - **New dependencies:** `sharp` (prebuilt for Alpine), `sanitize-html`. Uploads use the multer that `@nestjs/platform-express` already ships.
 - Tests follow the API's rules: specs for the slug, block normalization and sanitizer utils; `*.int-spec.ts` against Postgres for the services (lifecycle, permissions, 409s, `SET NULL`, search); e2e for the public endpoints.
@@ -300,7 +304,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 3 | api | Slug transliteration util | | Done (theindex-api#50) |
 | 4 | api | Media: upload, processing, storage, library | | Done (theindex-api#51); uploads answer 503 until item 8 |
 | 5 | api | Article categories: admin CRUD | 3 | Done (theindex-api#52) |
-| 6 | api | Articles: entity, draft and lifecycle, block validation and sanitizing, admin endpoints; category slug lock and category delete cleanup | 3, 4, 5 | |
+| 6 | api | Articles: entity, draft and lifecycle, block validation and sanitizing, admin endpoints; category slug lock and category delete cleanup | 3, 4, 5 | Done (theindex-api#53, #54) |
 | 7 | api | Public articles and categories, search, sitemap feed, preview tokens | 6 | |
 | 8 | infra | DNS records, compose phase A (incl. the media volume, settings and container) | | |
 | 9 | front | `/content` area, navigation, categories pages | 5 | |
@@ -336,3 +340,9 @@ Each item is roughly one PR. API items come first because the other two repos de
   - Category names are unique per language, ignoring case, enforced by a unique index on the lowercased name (`nameKey`).
   - Renaming a category keeps its slug.
   - The slug lock and the cleanup on delete come with item 6 (sections 4, 6, 8, 12).
+- **2026-11-06, articles (theindex-api#53, #54):**
+  - An article's slug is set at the first publish, not when the draft is created, so it follows the final title. A chosen slug that is reserved or taken is a publish problem (400). The fallback is `statia`.
+  - Publish and discard take the `baseRevision` the admin saw (409 if stale).
+  - Autosave merges only the sent fields into the draft.
+  - Image and YouTube blocks are stored as `mediaId`/`videoId`; the back office maps them back to the editor's data.
+  - The `article_category_links` table holds the published categories (sections 4, 6, 7, 8, 12).

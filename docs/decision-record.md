@@ -2,7 +2,7 @@
 
 The reference for building the public site of The Index (`theindex-web`) and the content features it needs in `theindex-api` and `theindex-front`. It records what was decided, why, and what the first version (MVP) contains. Update it when a decision changes; don't let the code and this file disagree.
 
-- **Status:** agreed, MVP in progress (items 1–10 done, see section 12)
+- **Status:** agreed, MVP in progress (items 1–11 done, see section 12)
 - **Decided:** 2026-11-05; changes since then are listed in section 15
 - **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates, including the production compose file and the media container's nginx config; may become `theindex-infra`)
 
@@ -210,13 +210,15 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
   - `/content/categories`: list, create, edit and delete (`/content/categories/new`, `/:id/edit`, `/:id/delete`). No details page: a row opens the edit page, which links to the delete page.
   - `/content` itself redirects to `/content/articles`; an Articles / Categories tab row links the two lists.
 - **Editor layout (WordPress-like, full screen):**
-  - Top bar: back, save status ("Запазено" / "Запазва се…" / error), Preview, Publish or Update (Preview and Publish come with item 11).
+  - Top bar: back, save status ("Запазено" / "Запазва се…" / error), Preview, and Publish ("Публикувай"), Publish again ("Публикувай отново", after an unpublish) or Update ("Обнови", only while the draft differs from the site). The outcome shows under it: what went live with a "View on site" link, or the API's list of problems.
   - Main column: title, then Editor.js.
-  - Right panel: status, slug, excerpt, categories, featured image, SEO title and description, and at the bottom Unpublish / Delete permanently (each with a confirmation dialog; item 11). Below the text on phones.
+  - Right panel: status, slug, excerpt, categories, featured image, SEO title and description, and at the bottom Discard changes (when the draft differs from the site), Unpublish (while published) or Delete permanently (otherwise), each with a confirmation dialog that says what happens. Below the text on phones.
+- **Publish and Update** save what is left first, then publish that revision (the API's `baseRevision`); a field with an error, a failed save or a 409 publishes nothing. If the draft is saved again while publishing, the editor keeps showing "unpublished changes".
+- **Autosave skips the body when its blocks read the same** as the last saved ones (ids, `time` and `version` ignored): Editor.js also reports changes that leave the text as it was, and saving those would mark a published article as changed for nothing.
 - **Autosave:** about 2 seconds after the last change, and when leaving the page. Only the changed fields are sent, one request at a time, each based on the revision the last one returned. A field over its limit waits, with its error, while the others are saved. On a 409, the page tells the admin the article changed in another tab, stops saving and offers to reload.
 - **Editor.js blocks:** only the ones in section 7. The list tool offers no checklists, start numbers or counter types and the quote no alignment, since the API keeps none of them. The image and YouTube blocks are our own tools that store `mediaId` / `videoId` directly, so the stored shape and the editor's data are the same (only the list's `meta` is mapped). A video comes from a pasted YouTube link or the toolbox's link field; the back office shows its thumbnail, not the player. The editor's own UI text is translated (БГ / EN).
 - **Media picker:** a dialog to upload (alt text required) or choose from the library. Used by the featured image and the image block.
-- **Preview:** opens `https://theindex.training/preview?token=…` in a new tab. New environment value `publicSiteUrl`.
+- **Preview:** saves what is left, then opens `<publicSiteUrl>/preview?token=…` in a new tab (the tab opens in the click, so it isn't blocked as a pop-up, and gets its address when the token arrives). New environment value `publicSiteUrl`: `https://theindex.training` in production, `http://localhost:4321` (the site's dev server) in development. It also builds the "View on site" links. Until compose phase B and item 14, those addresses don't serve the site yet.
 - **Navigation:** a "Съдържание" item at the end of the Manage group, admins only (in the More sheet on phones). A URL-only area and the content-writer redirect on login are phase 2 decisions.
 - The portal's rules apply as usual: all text in `bg.json` and `en.json`, `ARTICLE_STATUS` enum labels, design tokens only (Editor.js's default styles need overrides for dark mode), `Eager` change detection, characterization-test rules for new logic.
 
@@ -331,7 +333,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 8 | infra | DNS records, compose phase A (incl. the media volume, settings and container) | | Done (2026-11-06, on the VPS; templates in `theindex-dev`) |
 | 9 | front | `/content` area, navigation, categories pages | 5 | Done (theindex-front#79) |
 | 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | Done (theindex-front#80) |
-| 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | |
+| 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | Done (theindex-front#81) |
 | 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | |
 | 13 | web | Home, article list, category pages, pagination, search | 12 | |
 | 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 | |
@@ -388,3 +390,8 @@ Each item is roughly one PR. API items come first because the other two repos de
   - The editor is full screen outside the portal's navigation shell, with a leave guard that saves first.
   - Autosave sends only the changed fields, one request at a time; a field over its limit waits while the rest is saved; a 409 stops it until a reload.
   - The image and YouTube blocks are our own Editor.js tools storing `mediaId` / `videoId`; the list and quote tools offer only what the API keeps (section 9).
+- **2026-11-07, back office publishing (item 11, theindex-front#81):**
+  - The main button reads Publish, Publish again (after an unpublish) or Update (only while the draft differs from the site); it saves what is left first and publishes that revision. Problems from the API are listed under the top bar.
+  - Discard changes is offered in the back office too (section 5 allowed it; the API had it since item 6), with Unpublish and Delete permanently, each behind a confirmation dialog.
+  - Preview and "View on site" use the new `publicSiteUrl` (production `https://theindex.training`, development `http://localhost:4321`).
+  - Autosave no longer saves a body whose blocks read the same as the stored ones, so Editor.js's own change events don't mark a published article as changed (section 9).

@@ -1,0 +1,22 @@
+---
+// A list block's items, nested lists included (Editor.js list 2: every level has the same style).
+import { sanitizeInline } from '../../lib/inline-html';
+import type { ListItem } from '../../lib/public-api';
+
+interface Props {
+  style: 'ordered' | 'unordered';
+  items: ListItem[];
+}
+
+const { style, items } = Astro.props;
+const List = style === 'ordered' ? 'ol' : 'ul';
+---
+
+<List>
+  {items.map((item) => (
+    <li>
+      <Fragment set:html={sanitizeInline(item.content)} />
+      {item.items.length > 0 && <Astro.self style={style} items={item.items} />}
+    </li>
+  ))}
+</List>

@@ -25,5 +25,19 @@
     "title": "Страницата не е намерена",
     "text": "Страницата, която търсите, не съществува или е преместена.",
     "back": "Към началото"
+  },
+  "breadcrumbs": {
+    "home": "Начало",
+    "articles": "Статии"
+  },
+  "article": {
+    "byline": "Екипът на The Index",
+    "updated": "Обновена на {date}",
+    "categories": "Категории",
+    "video": {
+      "play": "Пусни видеото",
+      "watch": "Гледай видеото в YouTube",
+      "playerTitle": "Видео от YouTube"
+    }
   }
 }

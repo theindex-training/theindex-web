@@ -1,0 +1,122 @@
+---
+// A YouTube video block (decision record, D10). Rendered as a link to the video around its
+// thumbnail; src/scripts/youtube.ts turns it into a play button that loads the player from
+// youtube-nocookie.com only when pressed.
+import { t } from '../../i18n';
+import { sanitizeInline } from '../../lib/inline-html';
+import { youtubeThumbnailUrl, youtubeWatchUrl } from '../../lib/youtube';
+
+interface Props {
+  videoId: string;
+  caption: string;
+  /** Unique on the page; names the caption so the play button can point at it. */
+  id: string;
+}
+
+const { videoId, caption, id } = Astro.props;
+const captionHtml = sanitizeInline(caption);
+const captionId = captionHtml ? `${id}-caption` : undefined;
+---
+
+<figure class="video">
+  <div
+    class="video__frame"
+    data-youtube={videoId}
+    data-youtube-play={t('article.video.play')}
+    data-youtube-title={t('article.video.playerTitle')}
+  >
+    <a
+      class="video__play"
+      href={youtubeWatchUrl(videoId)}
+      aria-describedby={captionId}
+      data-youtube-link
+    >
+      <img
+        class="video__thumb"
+        src={youtubeThumbnailUrl(videoId)}
+        alt=""
+        width="480"
+        height="360"
+        loading="lazy"
+        decoding="async"
+      />
+      <svg class="video__icon" viewBox="0 0 68 48" aria-hidden="true">
+        <rect class="video__icon-bg" width="68" height="48" rx="12"></rect>
+        <path class="video__icon-arrow" d="M27 14v20l18-10z"></path>
+      </svg>
+      <span class="visually-hidden" data-youtube-label>
+        {t('article.video.watch')}
+      </span>
+    </a>
+  </div>
+  {captionId && <figcaption id={captionId} set:html={captionHtml} />}
+</figure>
+
+<script>
+  import { initYoutubeVideos } from '../../scripts/youtube';
+
+  initYoutubeVideos(document, document);
+</script>
+
+<style>
+  .video__frame {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-lg);
+    background: var(--nav-bg);
+  }
+
+  .video__play {
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    cursor: pointer;
+  }
+
+  .video__play:focus-visible {
+    outline-offset: -4px;
+    outline-color: var(--nav-accent);
+  }
+
+  /* hqdefault is 4:3 with black bars; covering the 16:9 frame crops them away. */
+  .video__thumb {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .video__icon {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 4.25rem;
+    height: auto;
+    transform: translate(-50%, -50%);
+    transition: transform var(--transition-fast);
+  }
+
+  .video__icon-bg {
+    fill: var(--accent);
+  }
+
+  .video__icon-arrow {
+    fill: var(--on-accent);
+  }
+
+  .video__play:hover .video__icon {
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+
+  .video :global(.video__player) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+</style>

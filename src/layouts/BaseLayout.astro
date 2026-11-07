@@ -18,26 +18,88 @@ import '../styles/global.scss';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import { DEFAULT_LOCALE, t } from '../i18n';
+import { getConfig } from '../lib/config';
+import {
+  OG_LOCALES,
+  absoluteUrl,
+  defaultSocialImage,
+  serializeJsonLd,
+  type SocialImage,
+} from '../lib/seo';
 
 interface Props {
-  /** Page title; shown as "<title> | The Index" in the browser tab. */
+  /** Page title; shown as "<title> | The Index" in the browser tab, and as is in link previews. */
   title: string;
   /** Meta description: one or two sentences about the page. */
   description?: string;
+  /** Path of the page's canonical URL (e.g. "/articles/<slug>"), for pages search engines index. */
+  canonicalPath?: string;
+  /** Link preview image; the default site image when left out. */
+  image?: SocialImage | null;
+  /** Open Graph type: "article" adds the article's dates and sections. */
+  article?: {
+    publishedTime: string;
+    modifiedTime: string;
+    sections: string[];
+  };
+  /** schema.org objects, each embedded as JSON-LD. */
+  jsonLd?: unknown[];
 }
 
-const { title, description } = Astro.props;
+const {
+  title,
+  description,
+  canonicalPath,
+  image,
+  article,
+  jsonLd = [],
+} = Astro.props;
+const { siteUrl } = getConfig();
 const appName = t('common.appName');
 const documentTitle = title === appName ? title : `${title} | ${appName}`;
+const lang = Astro.currentLocale ?? DEFAULT_LOCALE;
+const canonical = canonicalPath ? absoluteUrl(siteUrl, canonicalPath) : null;
+const socialImage = image ?? defaultSocialImage(siteUrl, appName);
 ---
 
 <!doctype html>
-<html lang={Astro.currentLocale ?? DEFAULT_LOCALE}>
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{documentTitle}</title>
     {description && <meta name="description" content={description} />}
+    {canonical && <link rel="canonical" href={canonical} />}
+    <meta property="og:site_name" content={appName} />
+    <meta property="og:locale" content={OG_LOCALES[lang] ?? lang} />
+    <meta property="og:type" content={article ? 'article' : 'website'} />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    {canonical && <meta property="og:url" content={canonical} />}
+    <meta property="og:image" content={socialImage.url} />
+    <meta property="og:image:width" content={String(socialImage.width)} />
+    <meta property="og:image:height" content={String(socialImage.height)} />
+    <meta property="og:image:alt" content={socialImage.alt} />
+    {article && (
+      <>
+        <meta
+          property="article:published_time"
+          content={article.publishedTime}
+        />
+        <meta property="article:modified_time" content={article.modifiedTime} />
+        {article.sections.map((section) => (
+          <meta property="article:section" content={section} />
+        ))}
+      </>
+    )}
+    <meta name="twitter:card" content="summary_large_image" />
+    {jsonLd.map((data) => (
+      <script
+        is:inline
+        type="application/ld+json"
+        set:html={serializeJsonLd(data)}
+      />
+    ))}
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script is:inline>

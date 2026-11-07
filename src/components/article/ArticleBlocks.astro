@@ -1,0 +1,177 @@
+---
+// An article's body: one element per Editor.js block (docs/decision-record.md, section 7).
+// Inline HTML is sanitized again here; blocks of a type this site doesn't know are skipped, so a
+// new block type in the API never breaks a page.
+import { isBlankInline, sanitizeInline } from '../../lib/inline-html';
+import type { PublicBlock } from '../../lib/public-api';
+import { isYoutubeId } from '../../lib/youtube';
+import ArticleImage from './ArticleImage.astro';
+import ListItems from './ListItems.astro';
+import YouTubeVideo from './YouTubeVideo.astro';
+
+interface Props {
+  blocks: PublicBlock[];
+}
+
+const { blocks } = Astro.props;
+
+/** The caption as HTML, or '' when it has no text. */
+const captionHtml = (caption: string) => {
+  const html = sanitizeInline(caption);
+  return isBlankInline(html) ? '' : html;
+};
+---
+
+<div class="article-body">
+  {blocks.map((block, index) => {
+    switch (block.type) {
+      case 'paragraph': {
+        const html = sanitizeInline(block.data.text);
+        return isBlankInline(html) ? null : <p set:html={html} />;
+      }
+      case 'header': {
+        const html = sanitizeInline(block.data.text);
+        if (isBlankInline(html)) return null;
+        return block.data.level === 3 ? (
+          <h3 set:html={html} />
+        ) : (
+          <h2 set:html={html} />
+        );
+      }
+      case 'list':
+        return block.data.items.length ? (
+          <ListItems style={block.data.style} items={block.data.items} />
+        ) : null;
+      case 'quote': {
+        const caption = captionHtml(block.data.caption);
+        return (
+          <figure class="quote">
+            <blockquote>
+              <p set:html={sanitizeInline(block.data.text)} />
+            </blockquote>
+            {caption && (
+              <figcaption>
+                <cite set:html={caption} />
+              </figcaption>
+            )}
+          </figure>
+        );
+      }
+      case 'image': {
+        const caption = captionHtml(block.data.caption);
+        return (
+          <figure class="figure">
+            <ArticleImage class="figure__image" image={block.data.image} />
+            {caption && <figcaption set:html={caption} />}
+          </figure>
+        );
+      }
+      case 'embed':
+        return isYoutubeId(block.data.videoId) ? (
+          <YouTubeVideo
+            id={`block-${index + 1}`}
+            videoId={block.data.videoId}
+            caption={block.data.caption}
+          />
+        ) : null;
+      case 'delimiter':
+        return <hr />;
+      default:
+        return null;
+    }
+  })}
+</div>
+
+<style>
+  /* Reading text: a little larger than the UI, with room between lines. */
+  .article-body {
+    font-size: var(--text-lg);
+    line-height: 1.65;
+    overflow-wrap: break-word;
+  }
+
+  .article-body > :global(*) {
+    margin-block: 0;
+  }
+
+  .article-body > :global(* + *) {
+    margin-top: var(--space-5);
+  }
+
+  .article-body > :global(h2),
+  .article-body > :global(h3) {
+    margin-top: var(--space-10);
+  }
+
+  .article-body > :global(h2 + *),
+  .article-body > :global(h3 + *) {
+    margin-top: var(--space-3);
+  }
+
+  .article-body :global(ul),
+  .article-body :global(ol) {
+    padding-left: var(--space-6);
+  }
+
+  .article-body :global(li + li),
+  .article-body :global(li > ul),
+  .article-body :global(li > ol) {
+    margin-top: var(--space-2);
+  }
+
+  .article-body :global(li::marker) {
+    color: var(--accent-text);
+  }
+
+  .article-body > :global(hr) {
+    width: var(--space-16);
+    margin-block: var(--space-10);
+    margin-inline: auto;
+    border: 0;
+    border-top: 4px solid var(--accent);
+  }
+
+  .article-body :global(figure) {
+    margin-inline: 0;
+  }
+
+  .article-body :global(figcaption) {
+    margin-top: var(--space-2);
+    color: var(--muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .article-body :global(.figure__image) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-lg);
+  }
+
+  .quote blockquote {
+    margin: 0;
+    padding-left: var(--space-5);
+    border-left: 4px solid var(--accent);
+    font-size: var(--text-xl);
+    font-weight: 500;
+    line-height: 1.45;
+  }
+
+  .quote blockquote p {
+    margin: 0;
+  }
+
+  .quote figcaption {
+    padding-left: calc(var(--space-5) + 4px);
+  }
+
+  .quote cite {
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  .quote cite::before {
+    content: '— ';
+  }
+</style>

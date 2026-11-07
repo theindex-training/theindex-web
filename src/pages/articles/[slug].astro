@@ -1,0 +1,164 @@
+---
+// An article (docs/decision-record.md, sections 4, 7 and 10): published ones only, read from
+// theindex-api on every request. Anything the API doesn't know as published is the 404 page.
+import ArticleBlocks from '../../components/article/ArticleBlocks.astro';
+import ArticleImage from '../../components/article/ArticleImage.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { t } from '../../i18n';
+import { getConfig } from '../../lib/config';
+import { formatLongDate, sofiaDay } from '../../lib/dates';
+import { fetchPublicArticle } from '../../lib/public-api';
+import {
+  articleJsonLd,
+  articlePath,
+  articleSocialImage,
+  breadcrumbJsonLd,
+} from '../../lib/seo';
+
+const { siteUrl, apiInternalUrl } = getConfig();
+const article = await fetchPublicArticle(Astro.params.slug, {
+  apiUrl: apiInternalUrl,
+});
+if (!article) return Astro.rewrite('/404');
+
+const path = articlePath(article.slug);
+const updated = sofiaDay(article.updatedAt) !== sofiaDay(article.publishedAt);
+const jsonLd = [
+  articleJsonLd(article, {
+    siteUrl,
+    organizationName: t('common.appName'),
+  }),
+  breadcrumbJsonLd(siteUrl, [
+    { name: t('breadcrumbs.home'), path: '/' },
+    { name: t('breadcrumbs.articles'), path: '/articles' },
+    { name: article.title, path },
+  ]),
+];
+---
+
+<BaseLayout
+  title={article.seoTitle}
+  description={article.description}
+  canonicalPath={path}
+  image={articleSocialImage(article)}
+  article={{
+    publishedTime: article.publishedAt,
+    modifiedTime: article.updatedAt,
+    sections: article.categories.map((c) => c.name),
+  }}
+  jsonLd={jsonLd}
+>
+  <article class="container article" lang={article.language}>
+    <header class="article__header">
+      {article.categories.length > 0 && (
+        <ul class="article__categories" aria-label={t('article.categories')}>
+          {article.categories.map((category) => (
+            <li>
+              <a
+                class="article__category"
+                href={`/articles/category/${category.slug}`}
+              >
+                {category.name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      <h1 class="article__title">{article.title}</h1>
+      <p class="article__meta">
+        <span>{t('article.byline')}</span>
+        <time datetime={article.publishedAt}>
+          {formatLongDate(article.publishedAt)}
+        </time>
+        {updated && (
+          <time datetime={article.updatedAt}>
+            {t('article.updated', {
+              date: formatLongDate(article.updatedAt),
+            })}
+          </time>
+        )}
+      </p>
+    </header>
+    {article.featuredImage && (
+      <ArticleImage
+        class="article__featured"
+        image={article.featuredImage}
+        priority
+      />
+    )}
+    <ArticleBlocks blocks={article.content.blocks} />
+  </article>
+</BaseLayout>
+
+<style>
+  /* One reading column, about 70 characters of body text wide. */
+  .article {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    max-width: 44rem;
+  }
+
+  .article__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .article__categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .article__category {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-4);
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius-pill);
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-family: var(--font-heading);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: var(--label-tracking);
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .article__category:hover {
+    border-color: var(--accent-text);
+  }
+
+  .article__title {
+    margin: 0;
+    overflow-wrap: break-word;
+  }
+
+  .article__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  /* The dot ends an item, so a wrapped line never starts with one. */
+  .article__meta > :not(:last-child)::after {
+    content: '·' / '';
+    margin-left: var(--space-3);
+  }
+
+  .article :global(.article__featured) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-xl);
+  }
+</style>

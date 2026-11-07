@@ -1,15 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
+import { STUB_API_URL } from './e2e/support/articles';
 
 /**
  * E2E journeys against the production build: `astro build`, then the real Node server, so pages,
  * middleware and headers are exactly what the Docker image serves. Journeys pick their viewports
  * with tags, as in theindex-front: `@desktop` (1280×800) and/or `@mobile` (390×844).
  *
- * The site renders on the server, so API calls can't be intercepted in the browser with
- * page.route(). Once pages read from theindex-api, the journeys will start a stub API server
- * and point API_INTERNAL_URL at it.
+ * The site renders on the server, so its API calls can't be intercepted in the browser with
+ * page.route(). Playwright starts a stub of theindex-api's public endpoints instead
+ * (e2e/support/stub-api.ts, fixtures in e2e/support/articles.ts) and the site's
+ * API_INTERNAL_URL points at it.
  */
 const PORT = 4322;
+export const SITE_URL = `http://127.0.0.1:${PORT}`;
 export const APP_URL = 'https://app.example.test';
 
 export default defineConfig({
@@ -25,7 +28,7 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 5_000 },
   use: {
-    baseURL: `http://127.0.0.1:${PORT}`,
+    baseURL: SITE_URL,
     timezoneId: 'Europe/Sofia',
     locale: 'bg-BG',
     trace: 'retain-on-failure',
@@ -50,20 +53,27 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: 'npm run build && node ./dist/server/entry.mjs',
-    url: `http://127.0.0.1:${PORT}`,
-    reuseExistingServer: !process.env['CI'],
-    timeout: 180_000,
-    env: {
-      NODE_ENV: 'production',
-      ASTRO_TELEMETRY_DISABLED: '1',
-      HOST: '127.0.0.1',
-      PORT: String(PORT),
-      SITE_URL: `http://127.0.0.1:${PORT}`,
-      APP_URL,
-      // Nothing listens here yet; no page calls the API so far.
-      API_INTERNAL_URL: 'http://127.0.0.1:4399/api',
+  webServer: [
+    {
+      command: 'node ./e2e/support/stub-api.ts',
+      url: `${STUB_API_URL}/health`,
+      reuseExistingServer: !process.env['CI'],
+      timeout: 30_000,
     },
-  },
+    {
+      command: 'npm run build && node ./dist/server/entry.mjs',
+      url: `http://127.0.0.1:${PORT}`,
+      reuseExistingServer: !process.env['CI'],
+      timeout: 180_000,
+      env: {
+        NODE_ENV: 'production',
+        ASTRO_TELEMETRY_DISABLED: '1',
+        HOST: '127.0.0.1',
+        PORT: String(PORT),
+        SITE_URL,
+        APP_URL,
+        API_INTERNAL_URL: `${STUB_API_URL}/api`,
+      },
+    },
+  ],
 });

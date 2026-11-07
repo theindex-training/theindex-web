@@ -2,7 +2,7 @@
 
 The reference for building the public site of The Index (`theindex-web`) and the content features it needs in `theindex-api` and `theindex-front`. It records what was decided, why, and what the first version (MVP) contains. Update it when a decision changes; don't let the code and this file disagree.
 
-- **Status:** agreed, MVP in progress (items 1–9 done, see section 12)
+- **Status:** agreed, MVP in progress (items 1–10 done, see section 12)
 - **Decided:** 2026-11-05; changes since then are listed in section 15
 - **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates, including the production compose file and the media container's nginx config; may become `theindex-infra`)
 
@@ -204,15 +204,17 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 ## 9. Back office (theindex-front)
 
 - **Routes** (`roleGuard`, `data.roles: ['ADMIN']`), lazy-loaded so the editor never touches the initial bundle:
-  - `/content/articles`: list with a status filter and search, plus "New article".
-  - `/content/articles/:id`: the editor. "New article" creates the draft first and opens it here.
+  - `/content/articles`: list with a status filter and search, plus "New article" (done, theindex-front#80).
+  - `/content/articles/new`: asks for the title (the API creates a draft with one), creates the draft and opens it in the editor.
+  - `/content/articles/:id`: the editor, full screen outside the portal's navigation shell (its own top-level route, with the same guards plus a leave guard that saves first).
   - `/content/categories`: list, create, edit and delete (`/content/categories/new`, `/:id/edit`, `/:id/delete`). No details page: a row opens the edit page, which links to the delete page.
-  - `/content` itself redirects to `/content/categories` until the article list exists (item 10), then to `/content/articles`.
+  - `/content` itself redirects to `/content/articles`; an Articles / Categories tab row links the two lists.
 - **Editor layout (WordPress-like, full screen):**
-  - Top bar: back, save status ("Запазено" / "Запазва се…" / error), Preview, Publish or Update.
+  - Top bar: back, save status ("Запазено" / "Запазва се…" / error), Preview, Publish or Update (Preview and Publish come with item 11).
   - Main column: title, then Editor.js.
-  - Right panel: status, slug, excerpt, categories, featured image, SEO title and description, and at the bottom Unpublish / Delete permanently (each with a confirmation dialog).
-- **Autosave:** about 2 seconds after the last change, and when leaving the page. On a 409, the page tells the admin the article changed in another tab and offers to reload.
+  - Right panel: status, slug, excerpt, categories, featured image, SEO title and description, and at the bottom Unpublish / Delete permanently (each with a confirmation dialog; item 11). Below the text on phones.
+- **Autosave:** about 2 seconds after the last change, and when leaving the page. Only the changed fields are sent, one request at a time, each based on the revision the last one returned. A field over its limit waits, with its error, while the others are saved. On a 409, the page tells the admin the article changed in another tab, stops saving and offers to reload.
+- **Editor.js blocks:** only the ones in section 7. The list tool offers no checklists, start numbers or counter types and the quote no alignment, since the API keeps none of them. The image and YouTube blocks are our own tools that store `mediaId` / `videoId` directly, so the stored shape and the editor's data are the same (only the list's `meta` is mapped). A video comes from a pasted YouTube link or the toolbox's link field; the back office shows its thumbnail, not the player. The editor's own UI text is translated (БГ / EN).
 - **Media picker:** a dialog to upload (alt text required) or choose from the library. Used by the featured image and the image block.
 - **Preview:** opens `https://theindex.training/preview?token=…` in a new tab. New environment value `publicSiteUrl`.
 - **Navigation:** a "Съдържание" item at the end of the Manage group, admins only (in the More sheet on phones). A URL-only area and the content-writer redirect on login are phase 2 decisions.
@@ -328,7 +330,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 7 | api | Public articles and categories, search, sitemap feed, preview tokens | 6 | Done (theindex-api#55) |
 | 8 | infra | DNS records, compose phase A (incl. the media volume, settings and container) | | Done (2026-11-06, on the VPS; templates in `theindex-dev`) |
 | 9 | front | `/content` area, navigation, categories pages | 5 | Done (theindex-front#79) |
-| 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | |
+| 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | Done (theindex-front#80) |
 | 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | |
 | 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | |
 | 13 | web | Home, article list, category pages, pagination, search | 12 | |
@@ -381,3 +383,8 @@ Each item is roughly one PR. API items come first because the other two repos de
   - The categories have list, create, edit and delete pages, with no details page.
   - On create, the slug and the order are optional, so the API makes the slug from the name and puts the category last. On edit, both are required.
   - The API's 409s (a taken name or slug, a slug locked by published articles) are shown as they come (section 9).
+- **2026-11-06, back office articles (item 10, theindex-front#80):**
+  - `/content` opens on the articles; "New article" asks for the title first, since the API creates a draft with one.
+  - The editor is full screen outside the portal's navigation shell, with a leave guard that saves first.
+  - Autosave sends only the changed fields, one request at a time; a field over its limit waits while the rest is saved; a 409 stops it until a reload.
+  - The image and YouTube blocks are our own Editor.js tools storing `mediaId` / `videoId`; the list and quote tools offer only what the API keeps (section 9).

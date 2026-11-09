@@ -335,7 +335,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | Done (theindex-front#80) |
 | 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | Done (theindex-front#81) |
 | 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | Done (theindex-web#11) |
-| 13 | web | Home, article list, category pages, pagination, search | 12 | Done (this PR) |
+| 13 | web | Home, article list, category pages, pagination, search | 12 | Done (theindex-web#12) |
 | 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 | |
 | 15 | infra | Compose phase B, Search Console | 8, 11, 14 | |
 
@@ -402,7 +402,7 @@ Each item is roughly one PR. API items come first because the other two repos de
   - Default link preview image: `public/brand/og-default.png` (1200×630, the red logo on the navigation black). `Article` JSON-LD lists the 1200×630 crop and the largest file of the featured image; the `BreadcrumbList` is Начало › Статии › the title. The category links and `/articles` work from item 13.
   - The page shows the categories, the fixed byline (D11), the first publish date and, when it falls on a later Sofia day, the update date. No lead paragraph: the API's excerpt falls back to the start of the text, which would repeat it.
   - E2E runs against a stub of the public API (`e2e/support/stub-api.ts`), as section 10 planned (sections 7, 10).
-- **2026-11-09, lists and navigation (item 13):**
+- **2026-11-09, lists and navigation (item 13, theindex-web#12):**
   - The header links to "Статии" and every category with a published article, in the admins' order (section 14), with `aria-current` on the page being shown. The links sit in a row that scrolls sideways on narrow screens (below the logo and "Вход" under 1024px, between them from 1024px). The header is on every page, the 404 page included, so when the API fails it shows no categories and logs it, instead of failing the page.
   - Home: the newest article as the featured one (image beside the text from 768px, loaded eagerly with `fetchpriority="high"`), the next six in a grid and "Всички статии" when there are more. Its title is "The Index", with `WebSite` JSON-LD and a canonical link.
   - `/articles` and `/articles/category/<slug>` list 12 articles a page, newest first publish first, as cards (image, categories as text, title, excerpt, first publish date; the title link covers the card, so each card is one link). Plain "Предишна" / "Следваща" links with "Страница 2 от 5" between them. Page 1 has no `?page=`; every page has its own canonical URL (`?page=N` from page 2) and title, and other query parameters are left out of it. A `?page=` that isn't a whole number from 1 to 10 000 written without leading zeros, or is past the last page, is the 404 page.

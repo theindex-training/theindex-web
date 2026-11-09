@@ -94,13 +94,13 @@ test.describe('article page', () => {
         article.getByText(t('article.updated', { date: '5 ноември 2026 г.' })),
       ).toHaveAttribute('datetime', FULL_ARTICLE.updatedAt);
 
-      // Paragraph with inline formatting and a link.
+      // Paragraph with bold, italic and a link.
       await expect(
         article.getByRole('link', { name: 'ръководството' }),
       ).toHaveAttribute('href', 'https://example.com/guide');
-      await expect(
-        article.getByText('най-трудната', { exact: true }),
-      ).toBeVisible();
+      // Stored as <b> and <i>, shown as <strong> and <em>.
+      await expect(article.getByRole('strong')).toHaveText(['най-трудната']);
+      await expect(article.getByRole('emphasis')).toHaveText(['не', 'гърбът']);
 
       // Headings keep their levels under the title.
       await expect(

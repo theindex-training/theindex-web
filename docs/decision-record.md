@@ -336,7 +336,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | Done (theindex-front#81) |
 | 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | Done (theindex-web#11) |
 | 13 | web | Home, article list, category pages, pagination, search | 12 | Done (theindex-web#12) |
-| 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 | Done |
+| 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 | Done (theindex-web#13) |
 | 15 | infra | Compose phase B, Search Console | 8, 11, 14 | |
 
 ## 13. Phase 2 and later
@@ -409,7 +409,7 @@ Each item is roughly one PR. API items come first because the other two repos de
   - Search is a plain GET form on `/articles` (no JavaScript). The search is trimmed, its spaces collapsed and cut to the API's 100 characters (a longer one would be a 400 there); results show their count, keep the search on every page and are `noindex, follow` without a canonical link or JSON-LD.
   - A category page shows its name, description and article count, with its description (or a sentence naming it) as the meta description, and `BreadcrumbList` Начало › Статии › the category. `/articles` has Начало › Статии.
   - Until item 14's 503 page, a failing API still answers a bare 500 on these pages, as on the article page (sections 4, 10, 14).
-- **2026-11-09, sitemap, RSS, robots, 503, `/login` and preview (item 14):**
+- **2026-11-09, sitemap, RSS, robots, 503, `/login` and preview (item 14, theindex-web#13):**
   - `/sitemap.xml` lists `/`, `/articles`, every published article and every category with one, with the API's `lastmod`; `/` and `/articles` take the latest article's. Further list pages and search results are left out. `/rss.xml` (RSS 2.0) has the 20 newest articles (title, address, first publish date, excerpt, categories), `lastBuildDate` being the latest publish among them, and every page links to it. Both are built by hand (`src/lib/feeds.ts`), not with `@astrojs/sitemap` (static builds only) or `@astrojs/rss`: a few lines of escaped XML, no new dependency. Both are cached like pages.
   - `/robots.txt` allows everything and names the sitemap at `SITE_URL`. The preview isn't disallowed on purpose: it says `noindex`, which a crawler can only read on a page it may fetch.
   - When the API fails (network, timeout, 5xx), the middleware shows a 503 page in place of the page: `Retry-After: 60`, `no-store`, a "try again" link to the same address, and the header without categories (the API is down). Other errors are still a bare 500. `/503` itself is the 404 page.

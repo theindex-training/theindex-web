@@ -1,22 +1,95 @@
 ---
-// Placeholder until the article list exists (backlog item 13 in docs/decision-record.md).
+// The home page (decision record, sections 4 and 14): the newest published article as the
+// featured one, then the next ones, and a link to the full list when there are more.
+import ArticleCard from '../components/listing/ArticleCard.astro';
+import ArticleGrid from '../components/listing/ArticleGrid.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { t } from '../i18n';
+import { DEFAULT_LOCALE, t } from '../i18n';
+import { getConfig } from '../lib/config';
+import { fetchArticlePage } from '../lib/public-api';
+import { websiteJsonLd } from '../lib/seo';
+
+/** The featured article and two rows of three. */
+const HOME_ARTICLES = 7;
+
+const { siteUrl, apiInternalUrl } = getConfig();
+const { items, total } = await fetchArticlePage(
+  { pageSize: HOME_ARTICLES },
+  { apiUrl: apiInternalUrl },
+);
+const [featured, ...latest] = items;
+const appName = t('common.appName');
 ---
 
-<BaseLayout title={t('home.title')} description={t('home.description')}>
-  <section class="container home">
-    <h1 class="home__title">{t('home.title')}</h1>
-    <p class="home__lead">{t('home.lead')}</p>
-  </section>
+<BaseLayout
+  title={appName}
+  description={t('home.description')}
+  canonicalPath="/"
+  jsonLd={[websiteJsonLd(siteUrl, { name: appName, language: DEFAULT_LOCALE })]}
+>
+  <div class="container home">
+    <h1 class="home__title">{t('home.heading')}</h1>
+    {featured ? (
+      <>
+        <section aria-labelledby="home-featured">
+          <h2 id="home-featured" class="visually-hidden">
+            {t('home.featured')}
+          </h2>
+          <ArticleCard article={featured} headingLevel={3} featured priority />
+        </section>
+        {latest.length > 0 && (
+          <section class="home__section" aria-labelledby="home-latest">
+            <h2 id="home-latest" class="home__section-title">
+              {t('home.latest')}
+            </h2>
+            <ArticleGrid
+              articles={latest}
+              label={t('home.latest')}
+              headingLevel={3}
+            />
+          </section>
+        )}
+        {total > items.length && (
+          <p class="home__more">
+            <a class="btn btn--primary" href="/articles">
+              {t('home.allArticles')}
+            </a>
+          </p>
+        )}
+      </>
+    ) : (
+      <p class="home__empty">{t('home.empty')}</p>
+    )}
+  </div>
 </BaseLayout>
 
 <style>
-  .home__title {
-    margin: 0 0 var(--space-4);
+  .home {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
   }
 
-  .home__lead {
+  .home__title {
+    margin: 0;
+  }
+
+  .home__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .home__section-title {
+    margin: 0;
+    font-size: var(--text-2xl);
+  }
+
+  .home__more {
+    margin: 0;
+  }
+
+  .home__empty {
     max-width: 40rem;
     margin: 0;
     color: var(--muted);

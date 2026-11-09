@@ -7,6 +7,7 @@ import {
   breadcrumbJsonLd,
   defaultSocialImage,
   serializeJsonLd,
+  websiteJsonLd,
 } from './seo';
 
 const SITE = 'https://theindex.training';
@@ -86,6 +87,20 @@ describe('articleJsonLd', () => {
     );
     expect(data['image']).toEqual([`${SITE}/brand/og-default.png`]);
     expect(data).not.toHaveProperty('articleSection');
+  });
+});
+
+describe('websiteJsonLd', () => {
+  it('names the site, its home page and language, with the organization as publisher', () => {
+    expect(websiteJsonLd(SITE, { name: 'The Index', language: 'bg' })).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      '@id': `${SITE}/#website`,
+      name: 'The Index',
+      url: `${SITE}/`,
+      inLanguage: 'bg',
+      publisher: ORGANIZATION,
+    });
   });
 });
 

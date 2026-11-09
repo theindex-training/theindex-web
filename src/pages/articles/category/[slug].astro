@@ -1,0 +1,94 @@
+---
+// A category's published articles, newest first, 12 a page (`?page=`). A category without a
+// published article is the 404 page, as is a page number that isn't one or is past the last page
+// (decision record, section 4).
+import ArticleGrid from '../../../components/listing/ArticleGrid.astro';
+import Pagination from '../../../components/listing/Pagination.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { t } from '../../../i18n';
+import { getConfig } from '../../../lib/config';
+import { pageCount, pageHref, parsePage } from '../../../lib/listing';
+import { categoryPath } from '../../../lib/navigation';
+import {
+  fetchArticlePage,
+  fetchPublicCategory,
+  isSlug,
+} from '../../../lib/public-api';
+import { breadcrumbJsonLd } from '../../../lib/seo';
+
+const { siteUrl, apiInternalUrl } = getConfig();
+const { slug } = Astro.params;
+const page = parsePage(Astro.url.searchParams.get('page'));
+if (page === null || !isSlug(slug)) return Astro.rewrite('/404');
+
+const options = { apiUrl: apiInternalUrl };
+const [category, list] = await Promise.all([
+  fetchPublicCategory(slug, options),
+  fetchArticlePage({ category: slug, page }, options),
+]);
+if (!category) return Astro.rewrite('/404');
+const pages = pageCount(list.total, list.pageSize);
+if (page > pages) return Astro.rewrite('/404');
+
+const path = categoryPath(category.slug);
+const { name } = category;
+---
+
+<BaseLayout
+  title={page > 1 ? t('category.pageTitle', { name, page }) : name}
+  description={category.description || t('category.description', { name })}
+  canonicalPath={pageHref(path, page)}
+  jsonLd={[
+    breadcrumbJsonLd(siteUrl, [
+      { name: t('breadcrumbs.home'), path: '/' },
+      { name: t('breadcrumbs.articles'), path: '/articles' },
+      { name, path },
+    ]),
+  ]}
+>
+  <div class="container listing">
+    <header class="listing__header">
+      <h1 class="listing__title">{name}</h1>
+      {category.description && (
+        <p class="listing__description">{category.description}</p>
+      )}
+      <p class="listing__count">{t('category.count', { count: list.total })}</p>
+    </header>
+    <ArticleGrid
+      articles={list.items}
+      label={t('category.listLabel', { name })}
+    />
+    <Pagination path={path} page={page} pages={pages} />
+  </div>
+</BaseLayout>
+
+<style>
+  .listing {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .listing__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .listing__title {
+    margin: 0;
+    overflow-wrap: break-word;
+  }
+
+  .listing__description {
+    max-width: 44rem;
+    margin: 0;
+    font-size: var(--text-lg);
+  }
+
+  .listing__count {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+</style>

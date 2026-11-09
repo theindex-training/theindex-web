@@ -1,0 +1,85 @@
+---
+// Previous / next links between the pages of a list, with "page 2 of 5" between them. Plain
+// links (no JavaScript), so every page has its own crawlable URL. Nothing when there is one page.
+import { t } from '../../i18n';
+import { pageHref } from '../../lib/listing';
+
+interface Props {
+  /** The list's path, e.g. "/articles". */
+  path: string;
+  page: number;
+  pages: number;
+  /** The search, kept on every page. */
+  q?: string;
+}
+
+const { path, page, pages, q = '' } = Astro.props;
+---
+
+{pages > 1 && (
+  <nav class="pagination" aria-label={t('pagination.label')}>
+    {page > 1 ? (
+      <a
+        class="btn btn--secondary pagination__link"
+        href={pageHref(path, page - 1, q)}
+        rel="prev"
+      >
+        <span aria-hidden="true">←</span>
+        {t('pagination.previous')}
+      </a>
+    ) : (
+      <span class="pagination__spacer" />
+    )}
+    <p class="pagination__status">{t('pagination.status', { page, pages })}</p>
+    {page < pages ? (
+      <a
+        class="btn btn--secondary pagination__link"
+        href={pageHref(path, page + 1, q)}
+        rel="next"
+      >
+        {t('pagination.next')}
+        <span aria-hidden="true">→</span>
+      </a>
+    ) : (
+      <span class="pagination__spacer" />
+    )}
+  </nav>
+)}
+
+<style>
+  /* On a phone the two buttons share a row and the status sits below them. */
+  .pagination {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .pagination__link:first-child {
+    justify-self: start;
+  }
+
+  .pagination__link:last-child {
+    justify-self: end;
+  }
+
+  .pagination__status {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    text-align: center;
+  }
+
+  @media (min-width: 768px) {
+    .pagination {
+      grid-template-columns: 1fr auto 1fr;
+    }
+
+    .pagination__status {
+      grid-row: auto;
+      grid-column: auto;
+    }
+  }
+</style>

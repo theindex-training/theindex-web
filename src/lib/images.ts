@@ -7,6 +7,17 @@ import type { PublicMedia } from './public-api';
 export const ARTICLE_IMAGE_SIZES =
   '(min-width: 47rem) 44rem, calc(100vw - 2rem)';
 
+/**
+ * A card in the article grids (home, lists, categories): one column on phones, two from 768px
+ * and three from 1024px, in the 72rem container with 1.5rem gaps (see ArticleGrid).
+ */
+export const CARD_IMAGE_SIZES =
+  '(min-width: 75rem) 23rem, (min-width: 64rem) calc((100vw - 6rem) / 3), (min-width: 48rem) calc((100vw - 4.5rem) / 2), calc(100vw - 2rem)';
+
+/** The home page's featured article: the full width on phones, then three fifths of the row. */
+export const FEATURED_IMAGE_SIZES =
+  '(min-width: 75rem) 43rem, (min-width: 48rem) 60vw, calc(100vw - 2rem)';
+
 /** `srcset` from the WebP variants ("url 480w, url 960w, …"); empty when there are none. */
 export function srcsetOf(image: PublicMedia): string {
   return image.variants.map((v) => `${v.url} ${v.width}w`).join(', ');

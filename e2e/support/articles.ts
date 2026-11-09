@@ -1,4 +1,9 @@
-import type { PublicArticle, PublicMedia } from '../../src/lib/public-api.ts';
+import type {
+  PublicArticle,
+  PublicArticleSummary,
+  PublicCategory,
+  PublicMedia,
+} from '../../src/lib/public-api.ts';
 
 /**
  * Articles the stub API serves (e2e/support/stub-api.ts), shaped like theindex-api's public
@@ -8,8 +13,12 @@ import type { PublicArticle, PublicMedia } from '../../src/lib/public-api.ts';
 export const STUB_API_PORT = 4399;
 export const STUB_API_URL = `http://127.0.0.1:${STUB_API_PORT}`;
 
-/** A slug the stub answers with a 500, as when the API's database is down. */
+/**
+ * A slug (article or category) and a search the stub answers with a 500, as when the API's
+ * database is down.
+ */
 export const FAILING_SLUG = 'api-failure';
+export const FAILING_QUERY = 'api-failure';
 
 function media(id: string, altText: string): PublicMedia {
   const base = `${STUB_API_URL}/media/${id}`;
@@ -135,8 +144,8 @@ export const PLAIN_ARTICLE: PublicArticle = {
   excerpt: 'Само един абзац текст.',
   featuredImage: null,
   categories: [],
-  publishedAt: '2026-11-06T09:15:00.000Z',
-  updatedAt: '2026-11-06T09:15:00.000Z',
+  publishedAt: '2026-11-01T09:15:00.000Z',
+  updatedAt: '2026-11-01T09:15:00.000Z',
   content: {
     blocks: [{ type: 'paragraph', data: { text: 'Само един абзац текст.' } }],
   },
@@ -151,6 +160,8 @@ export const UNSAFE_ARTICLE: PublicArticle = {
   slug: 'opasen-tekst',
   title: 'Заглавие </script><script>window.pwned = true</script>',
   seoTitle: 'Опасен текст',
+  publishedAt: '2026-10-20T10:00:00.000Z',
+  updatedAt: '2026-10-20T10:00:00.000Z',
   content: {
     blocks: [
       {
@@ -171,8 +182,86 @@ export const UNSAFE_ARTICLE: PublicArticle = {
   },
 };
 
+/** Enough articles in one category for two pages of 12, one a day before the others. */
+export const WORKOUTS_COUNT = 13;
+export const WORKOUT_ARTICLES: PublicArticle[] = Array.from(
+  { length: WORKOUTS_COUNT },
+  (_, index) => {
+    const day = WORKOUTS_COUNT - index;
+    const date = `2026-10-${String(day).padStart(2, '0')}T06:00:00.000Z`;
+    const title = `Тренировка на деня ${day}`;
+    return {
+      slug: `trenirovka-na-denya-${day}`,
+      language: 'bg',
+      title,
+      seoTitle: title,
+      description: `Загрявка, сила и метконом за ден ${day}.`,
+      excerpt: `Загрявка, сила и метконом за ден ${day}.`,
+      featuredImage: null,
+      categories: [{ slug: 'trenirovki', name: 'Тренировки' }],
+      publishedAt: date,
+      updatedAt: date,
+      content: {
+        blocks: [
+          {
+            type: 'paragraph',
+            data: { text: `Загрявка, сила и метконом за ден ${day}.` },
+          },
+        ],
+      },
+    };
+  },
+);
+
+/** Published categories in the admins' order, as `GET /public/article-categories` lists them. */
+export const CATEGORIES: readonly Omit<PublicCategory, 'articleCount'>[] = [
+  {
+    slug: 'nachinaeshti',
+    name: 'Начинаещи',
+    description: 'Всичко за първите месеци в залата.',
+  },
+  { slug: 'tehnika', name: 'Техника', description: null },
+  {
+    slug: 'trenirovki',
+    name: 'Тренировки',
+    description: 'Тренировката на деня с бележки от треньорите.',
+  },
+];
+
 export const ARTICLES: readonly PublicArticle[] = [
   FULL_ARTICLE,
   PLAIN_ARTICLE,
   UNSAFE_ARTICLE,
+  ...WORKOUT_ARTICLES,
 ];
+
+/** Every article, newest first publish first, as the API lists them. */
+export const ARTICLES_NEWEST_FIRST: readonly PublicArticle[] = [
+  ...ARTICLES,
+].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+
+/** The summary the API lists for an article (no blocks, SEO fields or language). */
+export function summaryOf(article: PublicArticle): PublicArticleSummary {
+  const { slug, title, excerpt, featuredImage, categories } = article;
+  const { publishedAt, updatedAt } = article;
+  return {
+    slug,
+    title,
+    excerpt,
+    featuredImage,
+    categories,
+    publishedAt,
+    updatedAt,
+  };
+}
+
+export function categoryWithCount(
+  category: (typeof CATEGORIES)[number],
+): PublicCategory {
+  return {
+    ...category,
+    articleCount: ARTICLES.filter((a) =>
+      a.categories.some((c) => c.slug === category.slug),
+    ).length,
+  };
+}

@@ -44,6 +44,8 @@ interface Props {
   };
   /** schema.org objects, each embedded as JSON-LD. */
   jsonLd?: unknown[];
+  /** Keep the page out of search results (e.g. search results), while following its links. */
+  noindex?: boolean;
 }
 
 const {
@@ -53,6 +55,7 @@ const {
   image,
   article,
   jsonLd = [],
+  noindex = false,
 } = Astro.props;
 const { siteUrl } = getConfig();
 const appName = t('common.appName');
@@ -70,6 +73,7 @@ const socialImage = image ?? defaultSocialImage(siteUrl, appName);
     <title>{documentTitle}</title>
     {description && <meta name="description" content={description} />}
     {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex, follow" />}
     <meta property="og:site_name" content={appName} />
     <meta property="og:locale" content={OG_LOCALES[lang] ?? lang} />
     <meta property="og:type" content={article ? 'article' : 'website'} />

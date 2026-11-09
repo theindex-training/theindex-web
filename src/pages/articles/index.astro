@@ -1,0 +1,142 @@
+---
+// All published articles, newest first, 12 a page (`?page=`), with search (`?q=`); search
+// results are kept out of search engines (decision record, section 4). A page number that isn't
+// one, or is past the last page, is the 404 page.
+import ArticleGrid from '../../components/listing/ArticleGrid.astro';
+import Pagination from '../../components/listing/Pagination.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { t } from '../../i18n';
+import { getConfig } from '../../lib/config';
+import {
+  normalizeQuery,
+  pageCount,
+  pageHref,
+  parsePage,
+} from '../../lib/listing';
+import { SEARCH_MAX_LENGTH, fetchArticlePage } from '../../lib/public-api';
+import { breadcrumbJsonLd } from '../../lib/seo';
+
+const PATH = '/articles';
+const { siteUrl, apiInternalUrl } = getConfig();
+const page = parsePage(Astro.url.searchParams.get('page'));
+if (page === null) return Astro.rewrite('/404');
+const q = normalizeQuery(Astro.url.searchParams.get('q'));
+
+const { items, total, pageSize } = await fetchArticlePage(
+  { q, page },
+  { apiUrl: apiInternalUrl },
+);
+const pages = pageCount(total, pageSize);
+if (page > pages) return Astro.rewrite('/404');
+
+const title = q
+  ? t('articles.search.title', { q })
+  : page > 1
+    ? t('articles.pageTitle', { page })
+    : t('articles.title');
+---
+
+<BaseLayout
+  title={title}
+  description={t('articles.description')}
+  canonicalPath={q ? undefined : pageHref(PATH, page)}
+  noindex={Boolean(q)}
+  jsonLd={
+    q
+      ? []
+      : [
+          breadcrumbJsonLd(siteUrl, [
+            { name: t('breadcrumbs.home'), path: '/' },
+            { name: t('breadcrumbs.articles'), path: PATH },
+          ]),
+        ]
+  }
+>
+  <div class="container listing">
+    <header class="listing__header">
+      <h1 class="listing__title">{t('articles.title')}</h1>
+      <form class="search" action={PATH} method="get" role="search">
+        <label class="visually-hidden" for="search-q">
+          {t('articles.search.label')}
+        </label>
+        <input
+          id="search-q"
+          class="search__input"
+          type="search"
+          name="q"
+          value={q}
+          maxlength={SEARCH_MAX_LENGTH}
+          placeholder={t('articles.search.placeholder')}
+        />
+        <button class="btn btn--primary" type="submit">
+          {t('articles.search.submit')}
+        </button>
+      </form>
+      {q && (
+        <p class="listing__summary">
+          <span>{t('articles.search.results', { count: total, q })}</span>
+          <a href={PATH}>{t('articles.search.clear')}</a>
+        </p>
+      )}
+    </header>
+    {items.length > 0 ? (
+      <ArticleGrid articles={items} label={t('articles.listLabel')} />
+    ) : (
+      <p class="listing__empty">
+        {q ? t('articles.search.noResults', { q }) : t('articles.empty')}
+      </p>
+    )}
+    <Pagination path={PATH} page={page} pages={pages} q={q} />
+  </div>
+</BaseLayout>
+
+<style>
+  .listing {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .listing__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .listing__title {
+    margin: 0;
+  }
+
+  .search {
+    display: flex;
+    gap: var(--space-2);
+    max-width: 40rem;
+  }
+
+  .search__input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .listing__summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .listing__summary a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    margin-block: calc((var(--touch-target) - 1.5em) / -2);
+  }
+
+  .listing__empty {
+    max-width: 40rem;
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-lg);
+  }
+</style>

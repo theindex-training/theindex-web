@@ -40,13 +40,16 @@ src/
   middleware.ts          # checks the config, then adds default headers (lib/headers.ts) to every response
   layouts/BaseLayout.astro  # <html lang>, <head> (title, description, icons, pre-paint theme script), fonts, skip link, header, <main>, footer
   components/            # SiteHeader, SiteFooter, Brand, ThemeSwitch
-  pages/                 # routes (index.astro, 404.astro, later articles/…)
+    article/             # ArticleBlocks (the block renderer), ListItems, ArticleImage, YouTubeVideo
+  pages/                 # routes: index.astro, 404.astro, articles/[slug].astro
   styles/global.scss     # design tokens and global classes, copied from theindex-front (see "Design system")
-  scripts/theme.ts       # theme switch logic (client side), mirrors the portal's ThemeService
-  lib/                   # config.ts (runtime env), headers.ts (cache + security headers), dates.ts (Sofia time)
+  scripts/               # client-side logic: theme.ts (mirrors the portal's ThemeService), youtube.ts (click-to-play)
+  lib/                   # config.ts (runtime env), headers.ts (cache + security headers), dates.ts (Sofia time),
+                         # public-api.ts (API client + response types), inline-html.ts (sanitizer), images.ts,
+                         # seo.ts (social image, JSON-LD), youtube.ts (video URLs)
   i18n/                  # bg.json + t(); key checks in i18n-keys.spec.ts
-public/                  # favicon, apple-touch-icon, brand/ logo (copied from theindex-front/public)
-e2e/                     # Playwright journeys (*.e2e.ts) and support/ helpers
+public/                  # favicon, apple-touch-icon, brand/ logo (copied from theindex-front/public) and og-default.png (link previews)
+e2e/                     # Playwright journeys (*.e2e.ts); support/: i18n, stub API server and its fixtures
 docs/decision-record.md  # decisions, architecture and MVP backlog
 ```
 
@@ -78,8 +81,11 @@ The look is the portal's "Chalk & Iron" design system. **theindex-front's `CLAUD
 - Fonts: imported per weight and subset in `BaseLayout.astro` (`@fontsource/...`), never from Google's servers. Any new weight needs both the `latin` and `cyrillic` files.
 
 ## Pages and components
-- Every page uses `BaseLayout` with a translated `title` (shown as "<title> | The Index") and, for indexable pages, a `description`.
-- **No client-side JavaScript unless a feature needs it** (today: the theme switch only). Use an Astro `<script>` with the logic in `src/scripts/*.ts` (unit-tested), and keep it working without JavaScript where possible. No UI framework islands without a reason recorded in the decision record.
+- Every page uses `BaseLayout` with a translated `title` (shown as "<title> | The Index") and, for indexable pages, a `description` and a `canonicalPath`.
+- SEO head (decision record, section 10): `BaseLayout` always sends Open Graph tags and a `summary_large_image` Twitter card, with the default site image `public/brand/og-default.png` (1200×630) unless the page passes `image`. Pages add `article` (Open Graph dates and sections) and `jsonLd` (schema.org objects built in `lib/seo.ts`, embedded with `serializeJsonLd`, which escapes `<`, so content can't end the script).
+- **Reading the API:** only through `lib/public-api.ts` (`getJson`, `fetchPublicArticle`), server side. A 404 is `null`, and the page answers with `return Astro.rewrite('/404')`; anything else throws `ApiUnavailableError`. The types there mirror the API's public shapes by hand; keep them in step.
+- **Article text** is inline HTML from the API. Render it only through `sanitizeInline()` (`lib/inline-html.ts`, the API's allowlist) with `set:html`, never raw. It renders the stored `<b>` and `<i>` as `<strong>` and `<em>`. YouTube URLs are built from the video id in `lib/youtube.ts`, never taken from content.
+- **No client-side JavaScript unless a feature needs it** (today: the theme switch and the YouTube player). Use an Astro `<script>` with the logic in `src/scripts/*.ts` (unit-tested), and keep it working without JavaScript where possible. No UI framework islands without a reason recorded in the decision record.
 - Put comments in the frontmatter or `<script>`/`<style>`, not as `<!-- -->` in templates: HTML comments are sent to every reader.
 - Accessibility: one `h1` per page; landmarks from the layout (`banner`, `main`, `contentinfo`); every image needs `alt` (empty only when decorative); keep focus visible. ESLint enforces the jsx-a11y strict rules on `.astro` files.
 - Headers: `src/middleware.ts` adds `Cache-Control` to HTML (`public, max-age=60, stale-while-revalidate=300`; `no-store` for 5xx) and security headers, unless the page set them itself. A page that must not be cached (e.g. the draft preview) sets its own `Cache-Control`. Hashed assets under `/_astro/` get a one-year immutable header from the Node adapter.
@@ -97,7 +103,8 @@ The look is the portal's "Chalk & Iron" design system. **theindex-front's `CLAUD
 - **Unit (Vitest, `src/**/*.spec.ts`)**: logic in `lib/`, `scripts/`, `i18n/`. Files that need a DOM start with `// @vitest-environment jsdom`. Stub only browser boundaries (`matchMedia` with `vi.stubGlobal`, storage) and time (pass a `Date`, or `vi.setSystemTime`).
 - **E2E (Playwright, `e2e/*.e2e.ts`)**: run against the production build with `NODE_ENV=production` and test URLs (`playwright.config.ts`). Viewports by tag: `@desktop` (1280×800), `@mobile` (390×844). The browser runs in `Europe/Sofia` with a `bg-BG` locale.
   - Selectors: roles, accessible names and labels only, or `data-testid` (`<feature>-<thing>`), never CSS classes or tag structure. Get the text for a name from `t()` in `e2e/support/i18n.ts`, which throws on a missing key.
-  - The site renders on the server, so `page.route()` can't mock the API. When pages start reading from theindex-api, add a small stub API server under `e2e/support/`, start it from the Playwright config, and point `API_INTERNAL_URL` at it. Fixtures mirror the API's public response shapes.
+  - The site renders on the server, so `page.route()` can't mock the API. Playwright starts a stub API instead (`e2e/support/stub-api.ts`, run by Node as TypeScript, so only erasable syntax and `.ts` import extensions), and the site's `API_INTERNAL_URL` points at it. Its fixtures (`e2e/support/articles.ts`) mirror the API's public response shapes; journeys import them to know what to expect. Media URLs in fixtures point at the stub, which answers every image with a 1×1 PNG.
+  - `page.route()` still works for what the browser itself loads: the article journeys answer YouTube's hosts that way and record what was asked for, so nothing reaches the internet.
 - **Every test must fail if the behavior it covers breaks.** Assert outcomes (the text shown, the header sent, the value stored, the status code), not that a function ran. For new logic, break it once locally (flip a condition) and watch a test fail.
 
 ## Rules

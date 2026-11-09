@@ -10,3 +10,20 @@ export function currentYear(now: Date = new Date()): number {
     }).format(now),
   );
 }
+
+const longDate = new Intl.DateTimeFormat('bg', {
+  dateStyle: 'long',
+  timeZone: SITE_TIME_ZONE,
+});
+
+/** A date as readers see it, in Sofia: "7 ноември 2026 г.". */
+export function formatLongDate(date: Date | string): string {
+  return longDate.format(new Date(date));
+}
+
+const isoDay = new Intl.DateTimeFormat('en-CA', { timeZone: SITE_TIME_ZONE });
+
+/** The Sofia calendar day of a moment, as YYYY-MM-DD. */
+export function sofiaDay(date: Date | string): string {
+  return isoDay.format(new Date(date));
+}

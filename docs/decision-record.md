@@ -2,7 +2,7 @@
 
 The reference for building the public site of The Index (`theindex-web`) and the content features it needs in `theindex-api` and `theindex-front`. It records what was decided, why, and what the first version (MVP) contains. Update it when a decision changes; don't let the code and this file disagree.
 
-- **Status:** agreed, MVP in progress (items 1–11 done, see section 12)
+- **Status:** agreed, MVP in progress (items 1–12 done, see section 12)
 - **Decided:** 2026-11-05; changes since then are listed in section 15
 - **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates, including the production compose file and the media container's nginx config; may become `theindex-infra`)
 
@@ -150,7 +150,7 @@ Allowed blocks in the MVP. The API rejects any other type (400) and normalizes w
 | YouTube | `{ videoId, caption }`, parsed from the URL; the client's embed URL is never trusted | Thumbnail button; on click, an iframe from `youtube-nocookie.com` |
 | Delimiter | `{}` | `<hr>` |
 
-- Inline HTML is sanitized with an allowlist (`b`, `i`, `a[href]`, `br`; links only `http`, `https`, `mailto`) when the API saves, and again when the site renders.
+- Inline HTML is sanitized with an allowlist (`b`, `i`, `a[href]`, `br`; links only `http`, `https`, `mailto`) when the API saves, and again when the site renders. The site renders bold and italic as `<strong>` and `<em>`: in an article they mark importance and stress, which is what those elements mean.
 - Editor.js's own output wrapper (`{ time, blocks, version }`) and the tool names (`paragraph`, `header`, `list`, `quote`, `image`, `embed`, `delimiter`) are kept. The back office maps the image and YouTube blocks back to the editor's tool data: the image URL comes from the media library, and the YouTube URLs are built from the id.
 - Normalizing is idempotent: content the API returned saves back unchanged.
 - The JSON body limit goes from Express's default 100 kB to 1 MB (a change in `main.ts`).
@@ -334,7 +334,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 9 | front | `/content` area, navigation, categories pages | 5 | Done (theindex-front#79) |
 | 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | Done (theindex-front#80) |
 | 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | Done (theindex-front#81) |
-| 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | |
+| 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | Done (theindex-web#11) |
 | 13 | web | Home, article list, category pages, pagination, search | 12 | |
 | 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 | |
 | 15 | infra | Compose phase B, Search Console | 8, 11, 14 | |
@@ -395,3 +395,10 @@ Each item is roughly one PR. API items come first because the other two repos de
   - Discard changes is offered in the back office too (section 5 allowed it; the API had it since item 6), with Unpublish and Delete permanently, each behind a confirmation dialog.
   - Preview and "View on site" use the new `publicSiteUrl` (production `https://theindex.training`, development `http://localhost:4321`).
   - Autosave no longer saves a body whose blocks read the same as the stored ones, so Editor.js's own change events don't mark a published article as changed (section 9).
+- **2026-11-07, article page (item 12, theindex-web#11):**
+  - `/articles/<slug>` reads `GET /api/public/articles/:slug` on every request; the API's 404, or a path that can't be a slug, is the site's 404 page (cached like any page). Until item 14's 503 page, a failing API answers a bare 500, never cached and without a stack trace.
+  - Inline HTML is sanitized again with `sanitize-html` and the API's allowlist (a new server-side dependency). Bold and italic stay `<b>`/`<i>` in storage (Editor.js writes them) and reach readers as `<strong>`/`<em>`. Blocks of an unknown type, empty paragraphs and video ids that aren't YouTube ids are left out.
+  - YouTube: without JavaScript the thumbnail is a link to the video on youtube.com; with it, a play button that puts the `youtube-nocookie.com` player in its place (autoplay, focus moves to it). The thumbnail itself comes from `i.ytimg.com` (no cookies), as in the back office; nothing else from YouTube loads before play. A plain `<script>`, not a framework island.
+  - Default link preview image: `public/brand/og-default.png` (1200×630, the red logo on the navigation black). `Article` JSON-LD lists the 1200×630 crop and the largest file of the featured image; the `BreadcrumbList` is Начало › Статии › the title. The category links and `/articles` work from item 13.
+  - The page shows the categories, the fixed byline (D11), the first publish date and, when it falls on a later Sofia day, the update date. No lead paragraph: the API's excerpt falls back to the start of the text, which would repeat it.
+  - E2E runs against a stub of the public API (`e2e/support/stub-api.ts`), as section 10 planned (sections 7, 10).

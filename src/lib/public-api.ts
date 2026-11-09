@@ -69,6 +69,21 @@ export interface PublicArticle extends PublicArticleSummary {
   content: { blocks: PublicBlock[] };
 }
 
+/** A category that has at least one published article. */
+export interface PublicCategory extends PublicCategoryRef {
+  description: string | null;
+  /** Published articles in the category; always 1 or more. */
+  articleCount: number;
+}
+
+/** One page of a list (`GET /public/articles`). */
+export interface PublicArticlePage {
+  items: PublicArticleSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 /** The API could not be reached or answered with an error other than 404. */
 export class ApiUnavailableError extends Error {
   constructor(
@@ -92,8 +107,9 @@ export interface ApiClientOptions {
 export const API_TIMEOUT_MS = 10_000;
 
 /**
- * Article slugs as the API makes them (decision record, section 4): Latin letters, digits and
- * `-`, at most 80 characters. Anything else can't be an article, so it isn't sent to the API.
+ * Article and category slugs as the API makes them (decision record, section 4): Latin letters,
+ * digits and `-`, at most 80 characters. Anything else can't be an article or a category, so it
+ * isn't sent to the API.
  */
 const SLUG = /^[a-z0-9-]{1,80}$/;
 
@@ -108,6 +124,69 @@ export async function fetchPublicArticle(
 ): Promise<PublicArticle | null> {
   if (!isSlug(slug)) return null;
   return getJson<PublicArticle>(`/public/articles/${slug}`, options);
+}
+
+/** The API's limits for `GET /public/articles` (`ListPublicArticlesQueryDto` there). */
+export const ARTICLES_PAGE_SIZE = 12;
+export const ARTICLES_PAGE_MAX = 10_000;
+export const SEARCH_MAX_LENGTH = 100;
+
+export interface ArticleListQuery {
+  /** A category's slug: only its articles. */
+  category?: string;
+  /** Search in the title, excerpt and text; blank means no search. */
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * A page of published articles, newest first publish first. Values outside the API's limits
+ * would be a 400 there, so callers check them first (see lib/listing.ts).
+ */
+export async function fetchArticlePage(
+  { category, q, page = 1, pageSize = ARTICLES_PAGE_SIZE }: ArticleListQuery,
+  options: ApiClientOptions,
+): Promise<PublicArticlePage> {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  if (q) params.set('q', q);
+  params.set('page', String(page));
+  params.set('pageSize', String(pageSize));
+  const result = await getJson<PublicArticlePage>(
+    `/public/articles?${params.toString()}`,
+    options,
+  );
+  if (!result) {
+    throw new ApiUnavailableError('GET /public/articles answered 404', 404);
+  }
+  return result;
+}
+
+/** The categories that have a published article, in the order the admins set. */
+export async function fetchPublicCategories(
+  options: ApiClientOptions,
+): Promise<PublicCategory[]> {
+  const result = await getJson<PublicCategory[]>(
+    '/public/article-categories',
+    options,
+  );
+  if (!result) {
+    throw new ApiUnavailableError(
+      'GET /public/article-categories answered 404',
+      404,
+    );
+  }
+  return result;
+}
+
+/** A category by its slug, or null when it has no published article (404) or can't exist. */
+export async function fetchPublicCategory(
+  slug: string | undefined,
+  options: ApiClientOptions,
+): Promise<PublicCategory | null> {
+  if (!isSlug(slug)) return null;
+  return getJson<PublicCategory>(`/public/article-categories/${slug}`, options);
 }
 
 /**

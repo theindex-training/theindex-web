@@ -1,0 +1,46 @@
+---
+// A list of article cards: one column on phones, two from 768px, three from 1024px
+// (CARD_IMAGE_SIZES in lib/images.ts assumes these columns and gaps).
+import type { PublicArticleSummary } from '../../lib/public-api';
+import ArticleCard from './ArticleCard.astro';
+
+interface Props {
+  articles: PublicArticleSummary[];
+  /** Names the list for screen readers. */
+  label: string;
+  headingLevel?: 2 | 3;
+}
+
+const { articles, label, headingLevel = 2 } = Astro.props;
+---
+
+<ul class="article-grid" aria-label={label}>
+  {articles.map((article) => (
+    <li>
+      <ArticleCard article={article} headingLevel={headingLevel} />
+    </li>
+  ))}
+</ul>
+
+<style>
+  .article-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 768px) {
+    .article-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .article-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

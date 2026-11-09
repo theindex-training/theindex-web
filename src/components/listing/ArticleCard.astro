@@ -1,0 +1,177 @@
+---
+// An article in a list: featured image, categories, title, excerpt and first publish date. The
+// title is the card's only link, stretched over the whole card, so the card has one tab stop and
+// screen readers hear one link per article. Categories are shown as text, not links, for that.
+import { t } from '../../i18n';
+import { formatLongDate } from '../../lib/dates';
+import { CARD_IMAGE_SIZES, FEATURED_IMAGE_SIZES } from '../../lib/images';
+import type { PublicArticleSummary } from '../../lib/public-api';
+import { articlePath } from '../../lib/seo';
+import ArticleImage from '../article/ArticleImage.astro';
+
+interface Props {
+  article: PublicArticleSummary;
+  /** The title's heading level, after the page's own headings. */
+  headingLevel?: 2 | 3;
+  /** The home page's first article: wider, image beside the text from 768px. */
+  featured?: boolean;
+  /** Load the image at once (the first image on screen). */
+  priority?: boolean;
+}
+
+const {
+  article,
+  headingLevel = 2,
+  featured = false,
+  priority = false,
+} = Astro.props;
+const Heading = `h${headingLevel}` as const;
+---
+
+<article class:list={['card', { 'card--featured': featured }]}>
+  {article.featuredImage && (
+    <ArticleImage
+      class="card__image"
+      image={article.featuredImage}
+      sizes={featured ? FEATURED_IMAGE_SIZES : CARD_IMAGE_SIZES}
+      priority={priority}
+    />
+  )}
+  <div class="card__body">
+    {article.categories.length > 0 && (
+      <p class="card__categories">
+        <span class="visually-hidden">{t('article.categories')}: </span>
+        {article.categories.map((c) => c.name).join(' · ')}
+      </p>
+    )}
+    <Heading class="card__title">
+      <a class="card__link" href={articlePath(article.slug)}>
+        {article.title}
+      </a>
+    </Heading>
+    {article.excerpt && <p class="card__excerpt">{article.excerpt}</p>}
+    <p class="card__meta">
+      <time datetime={article.publishedAt}>
+        {formatLongDate(article.publishedAt)}
+      </time>
+    </p>
+  </div>
+</article>
+
+<style>
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    transition: border-color var(--transition-fast);
+  }
+
+  .card:hover {
+    border-color: var(--border-strong);
+  }
+
+  /* The link covers the card, so the card shows its focus. */
+  .card:has(.card__link:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .card :global(.card__image) {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    background: var(--surface-2);
+  }
+
+  .card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5);
+  }
+
+  .card__categories {
+    margin: 0;
+    color: var(--accent-text);
+    font-family: var(--font-heading);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: var(--label-tracking);
+    text-transform: uppercase;
+  }
+
+  .card__title {
+    margin: 0;
+    font-size: var(--text-xl);
+    overflow-wrap: break-word;
+  }
+
+  .card__link {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .card__link:hover {
+    color: var(--accent-text);
+  }
+
+  .card__link:focus-visible {
+    outline: none;
+  }
+
+  .card__link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .card__excerpt {
+    margin: 0;
+    color: var(--muted);
+    overflow-wrap: break-word;
+  }
+
+  /* The date sits at the bottom, so dates line up across a row of cards. */
+  .card__meta {
+    margin: auto 0 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  .card--featured .card__title {
+    font-size: var(--text-2xl);
+  }
+
+  @media (min-width: 768px) {
+    .card--featured:has(:global(.card__image)) {
+      display: grid;
+      grid-template-columns: 3fr 2fr;
+    }
+
+    .card--featured :global(.card__image) {
+      height: 100%;
+      min-height: 100%;
+    }
+
+    .card--featured .card__body {
+      justify-content: center;
+      padding: var(--space-8);
+    }
+
+    .card--featured .card__title {
+      font-size: var(--text-3xl);
+    }
+
+    .card--featured .card__meta {
+      margin-top: 0;
+    }
+  }
+</style>

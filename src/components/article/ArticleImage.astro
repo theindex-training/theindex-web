@@ -1,6 +1,6 @@
 ---
-// An image from the media library, drawn at the article column's width: WebP variants in srcset,
-// width and height so the space is kept while it loads. Lazy unless it is the first thing on
+// An image from the media library: WebP variants in srcset, drawn at the article column's width
+// unless `sizes` says otherwise (cards), width and height so the space is kept while it loads. Lazy unless it is the first thing on
 // screen (the featured image), which loads at once with high priority (decision record, section 10).
 import { ARTICLE_IMAGE_SIZES, fallbackSrc, srcsetOf } from '../../lib/images';
 import type { PublicMedia } from '../../lib/public-api';
@@ -8,10 +8,17 @@ import type { PublicMedia } from '../../lib/public-api';
 interface Props {
   image: PublicMedia;
   priority?: boolean;
+  /** How wide the image is drawn, for `srcset`; the article column by default. */
+  sizes?: string;
   class?: string;
 }
 
-const { image, priority = false, class: className } = Astro.props;
+const {
+  image,
+  priority = false,
+  sizes = ARTICLE_IMAGE_SIZES,
+  class: className,
+} = Astro.props;
 const srcset = srcsetOf(image);
 ---
 
@@ -19,7 +26,7 @@ const srcset = srcsetOf(image);
   class={className}
   src={fallbackSrc(image)}
   srcset={srcset || undefined}
-  sizes={srcset ? ARTICLE_IMAGE_SIZES : undefined}
+  sizes={srcset ? sizes : undefined}
   width={image.width}
   height={image.height}
   alt={image.altText}

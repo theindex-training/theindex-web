@@ -250,9 +250,9 @@ test.describe('article page', () => {
       await expect(
         article.getByRole('heading', { level: 1, name: PLAIN_ARTICLE.title }),
       ).toBeVisible();
-      await expect(article.getByText('6 ноември 2026 г.')).toBeVisible();
+      await expect(article.getByText('1 ноември 2026 г.')).toBeVisible();
       await expect(
-        article.getByText(t('article.updated', { date: '6 ноември 2026 г.' })),
+        article.getByText(t('article.updated', { date: '1 ноември 2026 г.' })),
       ).toHaveCount(0);
       await expect(
         article.getByRole('list', { name: t('article.categories') }),

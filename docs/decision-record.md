@@ -2,7 +2,7 @@
 
 The reference for building the public site of The Index (`theindex-web`) and the content features it needs in `theindex-api` and `theindex-front`. It records what was decided, why, and what the first version (MVP) contains. Update it when a decision changes; don't let the code and this file disagree.
 
-- **Status:** agreed, MVP in progress (items 1–12 done, see section 12)
+- **Status:** agreed, MVP in progress (items 1–13 done, see section 12)
 - **Decided:** 2026-11-05; changes since then are listed in section 15
 - **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates, including the production compose file and the media container's nginx config; may become `theindex-infra`)
 
@@ -335,7 +335,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 10 | front | Article list and editor: Editor.js, autosave, settings panel, media picker | 6 | Done (theindex-front#80) |
 | 11 | front | Publish, update, unpublish, delete (with confirmations), preview | 7, 10 | Done (theindex-front#81) |
 | 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | Done (theindex-web#11) |
-| 13 | web | Home, article list, category pages, pagination, search | 12 | |
+| 13 | web | Home, article list, category pages, pagination, search | 12 | Done (this PR) |
 | 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 | |
 | 15 | infra | Compose phase B, Search Console | 8, 11, 14 | |
 
@@ -402,3 +402,10 @@ Each item is roughly one PR. API items come first because the other two repos de
   - Default link preview image: `public/brand/og-default.png` (1200×630, the red logo on the navigation black). `Article` JSON-LD lists the 1200×630 crop and the largest file of the featured image; the `BreadcrumbList` is Начало › Статии › the title. The category links and `/articles` work from item 13.
   - The page shows the categories, the fixed byline (D11), the first publish date and, when it falls on a later Sofia day, the update date. No lead paragraph: the API's excerpt falls back to the start of the text, which would repeat it.
   - E2E runs against a stub of the public API (`e2e/support/stub-api.ts`), as section 10 planned (sections 7, 10).
+- **2026-11-09, lists and navigation (item 13):**
+  - The header links to "Статии" and every category with a published article, in the admins' order (section 14), with `aria-current` on the page being shown. The links sit in a row that scrolls sideways on narrow screens (below the logo and "Вход" under 1024px, between them from 1024px). The header is on every page, the 404 page included, so when the API fails it shows no categories and logs it, instead of failing the page.
+  - Home: the newest article as the featured one (image beside the text from 768px, loaded eagerly with `fetchpriority="high"`), the next six in a grid and "Всички статии" when there are more. Its title is "The Index", with `WebSite` JSON-LD and a canonical link.
+  - `/articles` and `/articles/category/<slug>` list 12 articles a page, newest first publish first, as cards (image, categories as text, title, excerpt, first publish date; the title link covers the card, so each card is one link). Plain "Предишна" / "Следваща" links with "Страница 2 от 5" between them. Page 1 has no `?page=`; every page has its own canonical URL (`?page=N` from page 2) and title, and other query parameters are left out of it. A `?page=` that isn't a whole number from 1 to 10 000 written without leading zeros, or is past the last page, is the 404 page.
+  - Search is a plain GET form on `/articles` (no JavaScript). The search is trimmed, its spaces collapsed and cut to the API's 100 characters (a longer one would be a 400 there); results show their count, keep the search on every page and are `noindex, follow` without a canonical link or JSON-LD.
+  - A category page shows its name, description and article count, with its description (or a sentence naming it) as the meta description, and `BreadcrumbList` Начало › Статии › the category. `/articles` has Начало › Статии.
+  - Until item 14's 503 page, a failing API still answers a bare 500 on these pages, as on the article page (sections 4, 10, 14).

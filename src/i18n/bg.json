@@ -11,15 +11,48 @@
   },
   "header": {
     "homeLink": "The Index, начало",
+    "navLabel": "Основна навигация",
+    "articles": "Статии",
     "login": "Вход"
   },
   "footer": {
     "copyright": "© {year} The Index"
   },
   "home": {
-    "title": "Статии",
     "description": "Статии от екипа на The Index.",
-    "lead": "Скоро тук ще публикуваме статии от екипа на The Index."
+    "heading": "Статии от екипа на The Index",
+    "featured": "Най-новата статия",
+    "latest": "Още статии",
+    "allArticles": "Всички статии",
+    "empty": "Скоро тук ще публикуваме статии от екипа на The Index."
+  },
+  "articles": {
+    "title": "Статии",
+    "pageTitle": "Статии, страница {page}",
+    "description": "Всички статии от екипа на The Index, най-новите първи.",
+    "listLabel": "Статии",
+    "empty": "Все още няма публикувани статии.",
+    "search": {
+      "label": "Търсене в статиите",
+      "placeholder": "Дума или израз",
+      "submit": "Търси",
+      "clear": "Изчисти търсенето",
+      "title": "Търсене: „{q}“",
+      "results": "{count, plural, one {# статия} other {# статии}} за „{q}“",
+      "noResults": "Няма статии за „{q}“. Опитайте с друга дума."
+    }
+  },
+  "category": {
+    "pageTitle": "{name}, страница {page}",
+    "description": "Статиите в категория „{name}“ от екипа на The Index.",
+    "count": "{count, plural, one {# статия} other {# статии}}",
+    "listLabel": "Статии в категория „{name}“"
+  },
+  "pagination": {
+    "label": "Страници",
+    "previous": "Предишна",
+    "next": "Следваща",
+    "status": "Страница {page} от {pages}"
   },
   "notFound": {
     "title": "Страницата не е намерена",

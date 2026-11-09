@@ -104,6 +104,23 @@ export function articleJsonLd(
   };
 }
 
+/** schema.org `WebSite` for the home page: the site's name, address, language and publisher. */
+export function websiteJsonLd(
+  siteUrl: string,
+  { name, language }: { name: string; language: string },
+): JsonLd {
+  const url = absoluteUrl(siteUrl, '/');
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${url}#website`,
+    name,
+    url,
+    inLanguage: language,
+    publisher: organizationJsonLd(siteUrl, name),
+  };
+}
+
 export interface Breadcrumb {
   name: string;
   /** Path on this site. */

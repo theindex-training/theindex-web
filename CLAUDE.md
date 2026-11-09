@@ -39,14 +39,17 @@ astro.config.ts          # server output, Node adapter, i18n (bg, no prefix), tr
 src/
   middleware.ts          # checks the config, then adds default headers (lib/headers.ts) to every response
   layouts/BaseLayout.astro  # <html lang>, <head> (title, description, icons, pre-paint theme script), fonts, skip link, header, <main>, footer
-  components/            # SiteHeader, SiteFooter, Brand, ThemeSwitch
+  components/            # SiteHeader (logo, "Статии", categories, "Вход"), SiteFooter, Brand, ThemeSwitch
     article/             # ArticleBlocks (the block renderer), ListItems, ArticleImage, YouTubeVideo
-  pages/                 # routes: index.astro, 404.astro, articles/[slug].astro
+    listing/             # ArticleCard, ArticleGrid, Pagination (home, /articles, category pages)
+  pages/                 # routes: index.astro, 404.astro, articles/index.astro (list + search),
+                         # articles/[slug].astro, articles/category/[slug].astro
   styles/global.scss     # design tokens and global classes, copied from theindex-front (see "Design system")
   scripts/               # client-side logic: theme.ts (mirrors the portal's ThemeService), youtube.ts (click-to-play)
   lib/                   # config.ts (runtime env), headers.ts (cache + security headers), dates.ts (Sofia time),
                          # public-api.ts (API client + response types), inline-html.ts (sanitizer), images.ts,
-                         # seo.ts (social image, JSON-LD), youtube.ts (video URLs)
+                         # seo.ts (social image, JSON-LD), youtube.ts (video URLs), listing.ts (?page= and ?q=),
+                         # navigation.ts (header categories)
   i18n/                  # bg.json + t(); key checks in i18n-keys.spec.ts
 public/                  # favicon, apple-touch-icon, brand/ logo (copied from theindex-front/public) and og-default.png (link previews)
 e2e/                     # Playwright journeys (*.e2e.ts); support/: i18n, stub API server and its fixtures
@@ -83,7 +86,8 @@ The look is the portal's "Chalk & Iron" design system. **theindex-front's `CLAUD
 ## Pages and components
 - Every page uses `BaseLayout` with a translated `title` (shown as "<title> | The Index") and, for indexable pages, a `description` and a `canonicalPath`.
 - SEO head (decision record, section 10): `BaseLayout` always sends Open Graph tags and a `summary_large_image` Twitter card, with the default site image `public/brand/og-default.png` (1200×630) unless the page passes `image`. Pages add `article` (Open Graph dates and sections) and `jsonLd` (schema.org objects built in `lib/seo.ts`, embedded with `serializeJsonLd`, which escapes `<`, so content can't end the script).
-- **Reading the API:** only through `lib/public-api.ts` (`getJson`, `fetchPublicArticle`), server side. A 404 is `null`, and the page answers with `return Astro.rewrite('/404')`; anything else throws `ApiUnavailableError`. The types there mirror the API's public shapes by hand; keep them in step.
+- **Reading the API:** only through `lib/public-api.ts` (`getJson`, `fetchPublicArticle`, `fetchArticlePage`, `fetchPublicCategories`, `fetchPublicCategory`), server side. A 404 is `null`, and the page answers with `return Astro.rewrite('/404')`; anything else throws `ApiUnavailableError`. The types there mirror the API's public shapes by hand; keep them in step. The header reads the categories on every page through `headerCategories()`, which shows none (and logs) when the API fails, so the 404 page still renders.
+- **Lists** (home, `/articles`, category pages): cards from `components/listing/`. Read `?page=` with `parsePage()` and `?q=` with `normalizeQuery()` (`lib/listing.ts`), which keep values inside the API's limits; an invalid page or one past the last is the 404 page. Build list URLs with `pageHref()` (page 1 has no `?page=`; that is the canonical address). Search results pass `noindex` to `BaseLayout` and no canonical link.
 - **Article text** is inline HTML from the API. Render it only through `sanitizeInline()` (`lib/inline-html.ts`, the API's allowlist) with `set:html`, never raw. It renders the stored `<b>` and `<i>` as `<strong>` and `<em>`. YouTube URLs are built from the video id in `lib/youtube.ts`, never taken from content.
 - **No client-side JavaScript unless a feature needs it** (today: the theme switch and the YouTube player). Use an Astro `<script>` with the logic in `src/scripts/*.ts` (unit-tested), and keep it working without JavaScript where possible. No UI framework islands without a reason recorded in the decision record.
 - Put comments in the frontmatter or `<script>`/`<style>`, not as `<!-- -->` in templates: HTML comments are sent to every reader.

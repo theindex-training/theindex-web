@@ -1,14 +1,45 @@
 ---
+// Logo, "Статии", the categories with published articles and "Вход" (decision record, section 10).
+// The links sit in a row of their own that scrolls sideways on narrow screens, so any number of
+// categories fits without widening the page.
 import { t } from '../i18n';
 import { getConfig } from '../lib/config';
+import {
+  categoryPath,
+  headerCategories,
+  isCurrentPath,
+} from '../lib/navigation';
 import Brand from './Brand.astro';
 
-const { appUrl } = getConfig();
+const { appUrl, apiInternalUrl } = getConfig();
+const categories = await headerCategories({ apiUrl: apiInternalUrl });
+const links = [
+  { href: '/articles', label: t('header.articles') },
+  ...categories.map((c) => ({ href: categoryPath(c.slug), label: c.name })),
+];
+const pathname = Astro.url.pathname;
 ---
 
 <header class="site-header">
   <div class="container site-header__inner">
     <Brand />
+    <nav class="site-header__nav" aria-label={t('header.navLabel')}>
+      <ul class="site-header__links">
+        {links.map((link) => (
+          <li>
+            <a
+              class="site-header__link"
+              href={link.href}
+              aria-current={
+                isCurrentPath(link.href, pathname) ? 'page' : undefined
+              }
+            >
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
     <a class="site-header__login" href={appUrl}>
       {t('header.login')}
     </a>
@@ -22,15 +53,84 @@ const { appUrl } = getConfig();
     color: var(--nav-text);
   }
 
+  /* Phones and tablets: logo and "Вход" on top, the links in a row below. */
   .site-header__inner {
-    display: flex;
+    display: grid;
+    grid-template-areas:
+      'brand login'
+      'nav nav';
+    grid-template-columns: 1fr auto;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    min-height: 4.5rem;
+    column-gap: var(--space-4);
+    padding-top: var(--space-3);
+  }
+
+  .site-header__inner > :global(.brand) {
+    grid-area: brand;
+    justify-self: start;
+  }
+
+  .site-header__nav {
+    grid-area: nav;
+    min-width: 0;
+  }
+
+  .site-header__links {
+    display: flex;
+    gap: var(--space-1);
+    margin: 0 calc(-1 * var(--space-3));
+    padding: var(--space-1) 0;
+    overflow-x: auto;
+    list-style: none;
+    scrollbar-width: thin;
+  }
+
+  .site-header__link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    color: var(--nav-text);
+    font-family: var(--font-heading);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: var(--label-tracking);
+    text-decoration: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: background-color var(--transition-fast);
+  }
+
+  .site-header__link:hover {
+    background: var(--nav-surface);
+    color: var(--nav-text-strong);
+  }
+
+  .site-header__link:focus-visible {
+    outline-color: var(--nav-accent);
+    outline-offset: -2px;
+  }
+
+  /* The current page: strong text and the accent marker under it, as in the portal's sidebar. */
+  .site-header__link[aria-current='page'] {
+    color: var(--nav-text-strong);
+  }
+
+  .site-header__link[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    right: var(--space-3);
+    bottom: var(--space-1);
+    left: var(--space-3);
+    height: 3px;
+    border-radius: var(--radius-pill);
+    background: var(--nav-accent);
   }
 
   .site-header__login {
+    grid-area: login;
     display: inline-flex;
     align-items: center;
     min-height: var(--touch-target);
@@ -53,5 +153,20 @@ const { appUrl } = getConfig();
 
   .site-header__login:focus-visible {
     outline-color: var(--nav-accent);
+  }
+
+  /* Desktop: one row, the links between the logo and "Вход". */
+  @media (min-width: 1024px) {
+    .site-header__inner {
+      grid-template-areas: 'brand nav login';
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      column-gap: var(--space-8);
+      min-height: 4.5rem;
+      padding-top: 0;
+    }
+
+    .site-header__links {
+      margin: 0;
+    }
   }
 </style>

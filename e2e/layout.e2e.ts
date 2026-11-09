@@ -17,11 +17,9 @@ test.describe('page shell', () => {
       await page.goto('/');
 
       await expect(page.locator('html')).toHaveAttribute('lang', 'bg');
-      await expect(page).toHaveTitle(
-        `${t('home.title')} | ${t('common.appName')}`,
-      );
+      await expect(page).toHaveTitle(t('common.appName'));
       await expect(
-        page.getByRole('heading', { level: 1, name: t('home.title') }),
+        page.getByRole('heading', { level: 1, name: t('home.heading') }),
       ).toBeVisible();
 
       const banner = page.getByRole('banner');

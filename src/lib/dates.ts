@@ -27,3 +27,19 @@ const isoDay = new Intl.DateTimeFormat('en-CA', { timeZone: SITE_TIME_ZONE });
 export function sofiaDay(date: Date | string): string {
   return isoDay.format(new Date(date));
 }
+
+const dateTime = new Intl.DateTimeFormat('bg', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  // Explicit, not hour12: false, which some ICU versions turn into hour 24 at midnight.
+  hourCycle: 'h23',
+  timeZone: SITE_TIME_ZONE,
+});
+
+/** A moment with its Sofia time: "6 ноември 2026 г. в 00:05". */
+export function formatDateTime(date: Date | string): string {
+  return dateTime.format(new Date(date));
+}

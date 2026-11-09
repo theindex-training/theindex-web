@@ -11,8 +11,16 @@ import {
 } from '../lib/navigation';
 import Brand from './Brand.astro';
 
+interface Props {
+  /** Link the categories (read from the API). Off on the 503 page, where the API is down. */
+  categories?: boolean;
+}
+
+const { categories: withCategories = true } = Astro.props;
 const { appUrl, apiInternalUrl } = getConfig();
-const categories = await headerCategories({ apiUrl: apiInternalUrl });
+const categories = withCategories
+  ? await headerCategories({ apiUrl: apiInternalUrl })
+  : [];
 const links = [
   { href: '/articles', label: t('header.articles') },
   ...categories.map((c) => ({ href: categoryPath(c.slug), label: c.name })),

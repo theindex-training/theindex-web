@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   ApiUnavailableError,
+  PREVIEW_TOKEN_MAX_LENGTH,
   fetchArticlePage,
+  fetchArticlePreview,
   fetchPublicArticle,
   fetchPublicCategories,
   fetchPublicCategory,
+  fetchSitemap,
   getJson,
   isSlug,
 } from './public-api';
@@ -224,5 +227,93 @@ describe('isSlug', () => {
     expect(isSlug('kak-da-zapochnem-s-krosfit')).toBe(true);
     expect(isSlug('statia-2')).toBe(true);
     expect(isSlug('x'.repeat(80))).toBe(true);
+  });
+});
+
+describe('fetchSitemap', () => {
+  it('GETs the sitemap feed', async () => {
+    const sitemap = {
+      articles: [{ slug: 'a', lastmod: '2026-11-05T21:30:00.000Z' }],
+      categories: [{ slug: 'tehnika', lastmod: '2026-11-05T21:30:00.000Z' }],
+    };
+    const fetch = respond(200, sitemap);
+    await expect(fetchSitemap({ apiUrl: API, fetch })).resolves.toEqual(
+      sitemap,
+    );
+    expect(fetch.mock.calls[0][0]).toBe(`${API}/public/sitemap`);
+  });
+
+  it('treats a 404 as the API being unavailable: the feed always exists', async () => {
+    await expect(
+      fetchSitemap({ apiUrl: API, fetch: respond(404) }),
+    ).rejects.toMatchObject({ name: 'ApiUnavailableError', status: 404 });
+  });
+});
+
+describe('fetchArticlePreview', () => {
+  const TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl';
+
+  it('GETs the draft for the token, encoded in the query string', async () => {
+    const preview = { preview: true, status: 'DRAFT', title: 'Чернова' };
+    const fetch = respond(200, preview);
+
+    await expect(
+      fetchArticlePreview('a+b/c=', { apiUrl: API, fetch }),
+    ).resolves.toEqual({ kind: 'article', article: preview });
+    expect(fetch.mock.calls[0][0]).toBe(
+      `${API}/public/preview?token=a%2Bb%2Fc%3D`,
+    );
+  });
+
+  it('is invalid when the API refuses the token (401) or cannot take it (400)', async () => {
+    for (const status of [400, 401]) {
+      await expect(
+        fetchArticlePreview(TOKEN, { apiUrl: API, fetch: respond(status) }),
+      ).resolves.toEqual({ kind: 'invalid' });
+    }
+  });
+
+  it('is invalid without asking the API when there is no usable token', async () => {
+    const fetch = respond(200);
+    for (const token of [null, '', 'x'.repeat(PREVIEW_TOKEN_MAX_LENGTH + 1)]) {
+      await expect(
+        fetchArticlePreview(token, { apiUrl: API, fetch }),
+      ).resolves.toEqual({ kind: 'invalid' });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('is deleted when the article no longer exists (404)', async () => {
+    await expect(
+      fetchArticlePreview(TOKEN, { apiUrl: API, fetch: respond(404) }),
+    ).resolves.toEqual({ kind: 'deleted' });
+  });
+
+  it('throws ApiUnavailableError for other failures, without the token in the message', async () => {
+    const failed = await fetchArticlePreview(TOKEN, {
+      apiUrl: API,
+      fetch: respond(500),
+    }).catch((e: unknown) => e);
+    expect(failed).toMatchObject({
+      name: 'ApiUnavailableError',
+      status: 500,
+      message: `GET ${API}/public/preview answered 500`,
+    });
+
+    const unreachable = await fetchArticlePreview(TOKEN, {
+      apiUrl: API,
+      fetch: vi.fn<typeof fetch>(() =>
+        Promise.reject(new TypeError('fetch failed')),
+      ),
+    }).catch((e: unknown) => e);
+    expect(unreachable).toBeInstanceOf(ApiUnavailableError);
+    expect((unreachable as Error).message).not.toContain(TOKEN);
+
+    const notJson = await fetchArticlePreview(TOKEN, {
+      apiUrl: API,
+      fetch: respond(200, '<html>proxy error</html>'),
+    }).catch((e: unknown) => e);
+    expect(notJson).toBeInstanceOf(ApiUnavailableError);
+    expect((notJson as Error).message).not.toContain(TOKEN);
   });
 });

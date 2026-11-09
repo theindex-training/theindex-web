@@ -189,31 +189,104 @@ export async function fetchPublicCategory(
   return getJson<PublicCategory>(`/public/article-categories/${slug}`, options);
 }
 
+/** A published page for the sitemap: its slug and when it last changed (ISO 8601). */
+export interface PublicSitemapEntry {
+  slug: string;
+  lastmod: string;
+}
+
+/** Everything public, for `/sitemap.xml` (`GET /public/sitemap`). */
+export interface PublicSitemap {
+  /** Published articles, newest first publish first; `lastmod` is the last publish. */
+  articles: PublicSitemapEntry[];
+  /**
+   * Categories with a published article, in navigation order; `lastmod` is the later of the
+   * category's own last change and the last publish of one of its articles.
+   */
+  categories: PublicSitemapEntry[];
+}
+
+export async function fetchSitemap(
+  options: ApiClientOptions,
+): Promise<PublicSitemap> {
+  const result = await getJson<PublicSitemap>('/public/sitemap', options);
+  if (!result) {
+    throw new ApiUnavailableError('GET /public/sitemap answered 404', 404);
+  }
+  return result;
+}
+
+export type ArticleStatus = 'DRAFT' | 'PUBLISHED' | 'UNPUBLISHED';
+
+/**
+ * The working copy (draft) of any article, as `/preview` shows it (`ArticlePreview` in
+ * theindex-api). Shaped like PublicArticle, but the draft may be unfinished: the title can be
+ * empty, and there is no slug or publish date before the first publish.
+ */
+export interface ArticlePreview extends Omit<
+  PublicArticle,
+  'slug' | 'publishedAt' | 'updatedAt'
+> {
+  preview: true;
+  status: ArticleStatus;
+  /** The published slug, else the one chosen in the draft, else null. */
+  slug: string | null;
+  /** First publish, or null for an article never published. */
+  publishedAt: string | null;
+  /** When the draft was last saved. */
+  updatedAt: string;
+}
+
+/** The API's limit for a preview token (`PreviewQueryDto` there). */
+export const PREVIEW_TOKEN_MAX_LENGTH = 2000;
+
+export type PreviewResult =
+  | { kind: 'article'; article: ArticlePreview }
+  /** No token, or one the API refuses: bad, expired or not a preview token. */
+  | { kind: 'invalid' }
+  /** The token is valid, but the article has been deleted since. */
+  | { kind: 'deleted' };
+
+/**
+ * The draft a preview token from the back office points at (`GET /public/preview`). The API
+ * answers 401 for a bad or expired token and 400 for one it can't take; both are `invalid`. A
+ * token that can't be valid isn't sent at all. Other failures throw ApiUnavailableError.
+ */
+export async function fetchArticlePreview(
+  token: string | null,
+  options: ApiClientOptions,
+): Promise<PreviewResult> {
+  if (!token || token.length > PREVIEW_TOKEN_MAX_LENGTH) {
+    return { kind: 'invalid' };
+  }
+  // The token stays out of error messages (and so out of logs): it opens a draft.
+  const { url, response } = await request(
+    `/public/preview?${new URLSearchParams({ token }).toString()}`,
+    options,
+    { hideQuery: true },
+  );
+  if (response.status === 400 || response.status === 401) {
+    return { kind: 'invalid' };
+  }
+  if (response.status === 404) return { kind: 'deleted' };
+  if (!response.ok) {
+    throw new ApiUnavailableError(
+      `GET ${url} answered ${response.status}`,
+      response.status,
+    );
+  }
+  return { kind: 'article', article: await readJson(url, response) };
+}
+
 /**
  * GETs `path` under the API's URL. A 404 is null; any other failure (network, timeout, 5xx, a
  * body that isn't JSON) throws ApiUnavailableError.
  */
 export async function getJson<T>(
   path: string,
-  {
-    apiUrl,
-    fetch: doFetch = fetch,
-    timeoutMs = API_TIMEOUT_MS,
-  }: ApiClientOptions,
+  options: ApiClientOptions,
 ): Promise<T | null> {
-  const url = `${apiUrl}${path}`;
-  let response: Response;
-  try {
-    response = await doFetch(url, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-  } catch (error) {
-    throw new ApiUnavailableError(
-      `GET ${url} failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-
+  const { url, response } = await request(path, options);
   if (response.status === 404) return null;
   if (!response.ok) {
     throw new ApiUnavailableError(
@@ -221,6 +294,38 @@ export async function getJson<T>(
       response.status,
     );
   }
+  return readJson<T>(url, response);
+}
+
+/**
+ * The API's answer to `GET path`, and the URL to name in error messages (without the query
+ * string when `hideQuery` is set). A network failure or a timeout throws ApiUnavailableError.
+ */
+async function request(
+  path: string,
+  {
+    apiUrl,
+    fetch: doFetch = fetch,
+    timeoutMs = API_TIMEOUT_MS,
+  }: ApiClientOptions,
+  { hideQuery = false }: { hideQuery?: boolean } = {},
+): Promise<{ url: string; response: Response }> {
+  const target = `${apiUrl}${path}`;
+  const url = hideQuery ? target.replace(/\?.*$/, '') : target;
+  try {
+    const response = await doFetch(target, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    return { url, response };
+  } catch (error) {
+    throw new ApiUnavailableError(
+      `GET ${url} failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+async function readJson<T>(url: string, response: Response): Promise<T> {
   try {
     return (await response.json()) as T;
   } catch {

@@ -1,8 +1,10 @@
 import type {
+  ArticlePreview,
   PublicArticle,
   PublicArticleSummary,
   PublicCategory,
   PublicMedia,
+  PublicSitemap,
 } from '../../src/lib/public-api.ts';
 
 /**
@@ -265,3 +267,76 @@ export function categoryWithCount(
     ).length,
   };
 }
+
+/** `GET /public/sitemap`: every article (last publish) and category (its latest article's). */
+export const SITEMAP: PublicSitemap = {
+  articles: ARTICLES_NEWEST_FIRST.map((a) => ({
+    slug: a.slug,
+    lastmod: a.updatedAt,
+  })),
+  categories: CATEGORIES.map((c) => ({
+    slug: c.slug,
+    lastmod: ARTICLES.filter((a) => a.categories.some((x) => x.slug === c.slug))
+      .map((a) => a.updatedAt)
+      .sort()
+      .at(-1)!,
+  })),
+};
+
+/**
+ * Preview tokens the stub knows (`GET /public/preview?token=`). Any other token is a 401, as an
+ * expired or forged one is for the API; no token at all is a 400.
+ */
+export const PREVIEW_TOKENS = {
+  draft: 'preview.draft.token',
+  published: 'preview.published.token',
+  untitled: 'preview.untitled.token',
+  /** A valid token for an article deleted since: 404. */
+  deleted: 'preview.deleted.token',
+  /** The API fails: 500. */
+  failing: FAILING_SLUG,
+  /** Expired or forged: 401. */
+  expired: 'preview.expired.token',
+} as const;
+
+/** A draft never published: no slug, no publish date, saved at 00:05 on 9 November in Sofia. */
+export const DRAFT_PREVIEW: ArticlePreview = {
+  preview: true,
+  status: 'DRAFT',
+  slug: null,
+  language: 'bg',
+  title: 'Чернова: защо клековете са важни',
+  seoTitle: 'Чернова: защо клековете са важни',
+  description: 'Клекът е в основата на почти всяко движение.',
+  excerpt: 'Клекът е в основата на почти всяко движение.',
+  featuredImage: BLOCK_IMAGE,
+  categories: [{ slug: 'tehnika', name: 'Техника' }],
+  publishedAt: null,
+  updatedAt: '2026-11-08T22:05:00.000Z',
+  content: {
+    blocks: [
+      {
+        type: 'paragraph',
+        data: { text: 'Клекът е в основата на <b>почти всяко</b> движение.' },
+      },
+      { type: 'header', data: { text: 'Дълбочина', level: 2 } },
+    ],
+  },
+};
+
+/** The working copy of a published article, with a title changed since it went live. */
+export const PUBLISHED_PREVIEW: ArticlePreview = {
+  ...FULL_ARTICLE,
+  preview: true,
+  status: 'PUBLISHED',
+  title: `${FULL_ARTICLE.title}: обновена`,
+  seoTitle: `${FULL_ARTICLE.title}: обновена`,
+  updatedAt: '2026-11-08T10:00:00.000Z',
+};
+
+/** A draft whose title was cleared. */
+export const UNTITLED_PREVIEW: ArticlePreview = {
+  ...DRAFT_PREVIEW,
+  title: '',
+  seoTitle: '',
+};

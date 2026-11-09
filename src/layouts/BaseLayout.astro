@@ -19,6 +19,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import { DEFAULT_LOCALE, t } from '../i18n';
 import { getConfig } from '../lib/config';
+import { RSS_PATH } from '../lib/feeds';
 import {
   OG_LOCALES,
   absoluteUrl,
@@ -46,6 +47,8 @@ interface Props {
   jsonLd?: unknown[];
   /** Keep the page out of search results (e.g. search results), while following its links. */
   noindex?: boolean;
+  /** Link the categories in the header; off when the API is known to be down. */
+  headerCategories?: boolean;
 }
 
 const {
@@ -56,6 +59,7 @@ const {
   article,
   jsonLd = [],
   noindex = false,
+  headerCategories = true,
 } = Astro.props;
 const { siteUrl } = getConfig();
 const appName = t('common.appName');
@@ -104,6 +108,12 @@ const socialImage = image ?? defaultSocialImage(siteUrl, appName);
         set:html={serializeJsonLd(data)}
       />
     ))}
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={appName}
+      href={absoluteUrl(siteUrl, RSS_PATH)}
+    />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script is:inline>
@@ -130,7 +140,7 @@ const socialImage = image ?? defaultSocialImage(siteUrl, appName);
     <a class="skip-link btn btn--primary" href="#main">
       {t('common.skipToContent')}
     </a>
-    <SiteHeader />
+    <SiteHeader categories={headerCategories} />
     <main id="main" tabindex="-1">
       <slot />
     </main>

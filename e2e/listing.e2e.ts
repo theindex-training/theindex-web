@@ -258,11 +258,9 @@ test.describe('all articles', () => {
     { tag: '@desktop' },
     async ({ page }) => {
       const response = await page.goto(`/articles?q=${FAILING_QUERY}`);
-      expect(response?.status()).toBe(500);
-      // A bare 500 until item 14's 503 page; never marked cacheable.
-      expect(response?.headers()['cache-control'] ?? '').not.toContain(
-        'public',
-      );
+      // The 503 page (e2e/unavailable.e2e.ts), never marked cacheable.
+      expect(response?.status()).toBe(503);
+      expect(response?.headers()['cache-control']).toBe('no-store');
     },
   );
 });
@@ -477,11 +475,9 @@ test.describe('category page', () => {
     { tag: '@desktop' },
     async ({ page }) => {
       const response = await page.goto(`/articles/category/${FAILING_SLUG}`);
-      expect(response?.status()).toBe(500);
-      // A bare 500 until item 14's 503 page; never marked cacheable.
-      expect(response?.headers()['cache-control'] ?? '').not.toContain(
-        'public',
-      );
+      // The 503 page (e2e/unavailable.e2e.ts), never marked cacheable.
+      expect(response?.status()).toBe(503);
+      expect(response?.headers()['cache-control']).toBe('no-store');
     },
   );
 });

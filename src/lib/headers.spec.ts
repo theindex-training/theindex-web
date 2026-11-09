@@ -39,10 +39,28 @@ describe('applyDefaultHeaders', () => {
     expect(headers.get('Cache-Control')).toBe('no-store');
   });
 
-  it('adds no Cache-Control to responses that are not HTML', () => {
-    const headers = new Headers({ 'Content-Type': 'application/xml' });
-    applyDefaultHeaders(headers, 200);
-    expect(headers.has('Cache-Control')).toBe(false);
+  it('caches the sitemap, the RSS feed and robots.txt like pages', () => {
+    for (const type of [
+      'application/xml; charset=utf-8',
+      'application/rss+xml; charset=utf-8',
+      'text/plain; charset=utf-8',
+      'Text/HTML;charset=UTF-8',
+    ]) {
+      const headers = new Headers({ 'Content-Type': type });
+      applyDefaultHeaders(headers, 200);
+      expect(headers.get('Cache-Control'), type).toBe(PAGE_CACHE_CONTROL);
+    }
+  });
+
+  it('adds no Cache-Control to other responses', () => {
+    for (const type of ['application/json', 'image/png', 'text/htmlx']) {
+      const headers = new Headers({ 'Content-Type': type });
+      applyDefaultHeaders(headers, 200);
+      expect(headers.has('Cache-Control'), type).toBe(false);
+    }
+    const untyped = new Headers();
+    applyDefaultHeaders(untyped, 301);
+    expect(untyped.has('Cache-Control')).toBe(false);
   });
 
   it('adds the security headers to every response', () => {

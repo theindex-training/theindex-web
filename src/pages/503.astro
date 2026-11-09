@@ -1,0 +1,37 @@
+---
+// The page a reader gets while theindex-api is down or failing (decision record, section 10):
+// status 503 with Retry-After, never cached (the middleware's default for 5xx), and a link that
+// loads the same address again. src/middleware.ts shows it in place of the page that failed;
+// asked for directly, /503 is not a page.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t } from '../i18n';
+import { RETRY_AFTER_SECONDS } from '../lib/headers';
+
+const retryPath = Astro.locals.retryPath;
+if (!retryPath) return Astro.rewrite('/404');
+
+Astro.response.status = 503;
+Astro.response.headers.set('Retry-After', String(RETRY_AFTER_SECONDS));
+---
+
+<BaseLayout title={t('unavailable.title')} headerCategories={false}>
+  <div class="container unavailable">
+    <div class="solo-card">
+      <p class="solo-card__code" aria-hidden="true">
+        503
+      </p>
+      <h1 class="solo-card__title">{t('unavailable.title')}</h1>
+      <p class="solo-card__text">{t('unavailable.text')}</p>
+      <a class="btn btn--primary" href={retryPath}>
+        {t('unavailable.retry')}
+      </a>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .unavailable {
+    display: grid;
+    place-items: center;
+  }
+</style>

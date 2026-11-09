@@ -1,0 +1,131 @@
+---
+// The draft preview the back office opens (`/preview?token=…`, decision record, sections 4 and
+// 10): the article's working copy as it is now, any status, laid out like the published page under
+// a notice that says what it is. Never cached and never indexed. A bad or expired token, or an
+// article deleted since, gets a page that says so; a failing API, the 503 page.
+import ArticleView from '../components/article/ArticleView.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t } from '../i18n';
+import { getConfig } from '../lib/config';
+import { formatDateTime } from '../lib/dates';
+import { PREVIEW_HEADERS } from '../lib/headers';
+import { fetchArticlePreview, type ArticleStatus } from '../lib/public-api';
+import { articlePath } from '../lib/seo';
+
+for (const [name, value] of Object.entries(PREVIEW_HEADERS)) {
+  Astro.response.headers.set(name, value);
+}
+
+const { appUrl, apiInternalUrl } = getConfig();
+const result = await fetchArticlePreview(Astro.url.searchParams.get('token'), {
+  apiUrl: apiInternalUrl,
+});
+const preview = result.kind === 'article' ? result.article : null;
+if (result.kind === 'invalid') Astro.response.status = 403;
+if (result.kind === 'deleted') Astro.response.status = 404;
+
+const STATUS_LABELS: Record<ArticleStatus, string> = {
+  DRAFT: t('preview.status.draft'),
+  PUBLISHED: t('preview.status.published'),
+  UNPUBLISHED: t('preview.status.unpublished'),
+};
+
+const title = preview?.title || t('preview.untitled');
+const problem =
+  result.kind === 'invalid'
+    ? { title: t('preview.invalid.title'), text: t('preview.invalid.text') }
+    : { title: t('preview.deleted.title'), text: t('preview.deleted.text') };
+---
+
+<BaseLayout
+  title={preview ? t('preview.title', { title }) : problem.title}
+  noindex
+>
+  {preview ? (
+    <>
+      <div class="container preview-bar">
+        <div class="notice notice--warning preview-notice">
+          <p class="preview-notice__title">{t('preview.notice')}</p>
+          <p class="preview-notice__text">{t('preview.hidden')}</p>
+          <p class="preview-notice__text preview-notice__meta">
+            <span>
+              {t('preview.statusLine', {
+                status: STATUS_LABELS[preview.status] ?? preview.status,
+              })}
+            </span>
+            <span>
+              {t('preview.saved', {
+                date: formatDateTime(preview.updatedAt),
+              })}
+            </span>
+          </p>
+          {preview.status === 'PUBLISHED' && preview.slug && (
+            <a href={articlePath(preview.slug)}>{t('preview.viewPublished')}</a>
+          )}
+        </div>
+      </div>
+      <ArticleView
+        article={{ ...preview, title }}
+        publishedAt={preview.publishedAt}
+        updatedAt={null}
+      />
+    </>
+  ) : (
+    <div class="container preview-problem">
+      <div class="solo-card">
+        <h1 class="solo-card__title">{problem.title}</h1>
+        <p class="solo-card__text">{problem.text}</p>
+        <a class="btn btn--primary" href={`${appUrl}/content/articles`}>
+          {t('preview.backOffice')}
+        </a>
+      </div>
+    </div>
+  )}
+</BaseLayout>
+
+<style>
+  /* Above the article and as wide as its reading column (ArticleView). */
+  .preview-bar {
+    max-width: 44rem;
+    margin-bottom: var(--space-8);
+  }
+
+  .preview-notice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .preview-notice p {
+    margin: 0;
+  }
+
+  .preview-notice__title {
+    font-family: var(--font-heading);
+    letter-spacing: var(--label-tracking);
+    text-transform: uppercase;
+  }
+
+  .preview-notice__text {
+    font-weight: 400;
+  }
+
+  .preview-notice__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+  }
+
+  .preview-notice a {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    color: inherit;
+  }
+
+  .preview-problem {
+    display: grid;
+    place-items: center;
+  }
+</style>

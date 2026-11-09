@@ -37,19 +37,23 @@ Known baseline (Nov 2026): build passes, all unit tests and E2E journeys pass, a
 ```
 astro.config.ts          # server output, Node adapter, i18n (bg, no prefix), trailingSlash: 'never'
 src/
-  middleware.ts          # checks the config, then adds default headers (lib/headers.ts) to every response
-  layouts/BaseLayout.astro  # <html lang>, <head> (title, description, icons, pre-paint theme script), fonts, skip link, header, <main>, footer
+  middleware.ts          # checks the config, shows the 503 page when the API fails, adds default headers (lib/headers.ts)
+  env.d.ts               # App.Locals (retryPath for the 503 page)
+  layouts/BaseLayout.astro  # <html lang>, <head> (title, description, RSS link, icons, pre-paint theme script), fonts, skip link, header, <main>, footer
   components/            # SiteHeader (logo, "Статии", categories, "Вход"), SiteFooter, Brand, ThemeSwitch
-    article/             # ArticleBlocks (the block renderer), ListItems, ArticleImage, YouTubeVideo
+    article/             # ArticleView (the article page and the preview), ArticleBlocks (the block renderer),
+                         # ListItems, ArticleImage, YouTubeVideo
     listing/             # ArticleCard, ArticleGrid, Pagination (home, /articles, category pages)
-  pages/                 # routes: index.astro, 404.astro, articles/index.astro (list + search),
-                         # articles/[slug].astro, articles/category/[slug].astro
+  pages/                 # routes: index.astro, 404.astro, 503.astro (only as the middleware's rewrite),
+                         # articles/index.astro (list + search), articles/[slug].astro,
+                         # articles/category/[slug].astro, preview.astro (draft preview),
+                         # sitemap.xml.ts, rss.xml.ts, robots.txt.ts, login.ts (301 to the back office)
   styles/global.scss     # design tokens and global classes, copied from theindex-front (see "Design system")
   scripts/               # client-side logic: theme.ts (mirrors the portal's ThemeService), youtube.ts (click-to-play)
   lib/                   # config.ts (runtime env), headers.ts (cache + security headers), dates.ts (Sofia time),
                          # public-api.ts (API client + response types), inline-html.ts (sanitizer), images.ts,
                          # seo.ts (social image, JSON-LD), youtube.ts (video URLs), listing.ts (?page= and ?q=),
-                         # navigation.ts (header categories)
+                         # navigation.ts (header categories), feeds.ts (sitemap, RSS and robots.txt text)
   i18n/                  # bg.json + t(); key checks in i18n-keys.spec.ts
 public/                  # favicon, apple-touch-icon, brand/ logo (copied from theindex-front/public) and og-default.png (link previews)
 e2e/                     # Playwright journeys (*.e2e.ts); support/: i18n, stub API server and its fixtures
@@ -86,13 +90,17 @@ The look is the portal's "Chalk & Iron" design system. **theindex-front's `CLAUD
 ## Pages and components
 - Every page uses `BaseLayout` with a translated `title` (shown as "<title> | The Index") and, for indexable pages, a `description` and a `canonicalPath`.
 - SEO head (decision record, section 10): `BaseLayout` always sends Open Graph tags and a `summary_large_image` Twitter card, with the default site image `public/brand/og-default.png` (1200×630) unless the page passes `image`. Pages add `article` (Open Graph dates and sections) and `jsonLd` (schema.org objects built in `lib/seo.ts`, embedded with `serializeJsonLd`, which escapes `<`, so content can't end the script).
-- **Reading the API:** only through `lib/public-api.ts` (`getJson`, `fetchPublicArticle`, `fetchArticlePage`, `fetchPublicCategories`, `fetchPublicCategory`), server side. A 404 is `null`, and the page answers with `return Astro.rewrite('/404')`; anything else throws `ApiUnavailableError`. The types there mirror the API's public shapes by hand; keep them in step. The header reads the categories on every page through `headerCategories()`, which shows none (and logs) when the API fails, so the 404 page still renders.
+- **Reading the API:** only through `lib/public-api.ts` (`getJson`, `fetchPublicArticle`, `fetchArticlePage`, `fetchPublicCategories`, `fetchPublicCategory`, `fetchSitemap`, `fetchArticlePreview`), server side. A 404 is `null`, and the page answers with `return Astro.rewrite('/404')`; anything else throws `ApiUnavailableError`. The types there mirror the API's public shapes by hand; keep them in step. The header reads the categories on every page through `headerCategories()`, which shows none (and logs) when the API fails, so the 404 page still renders.
+- **API down:** let `ApiUnavailableError` propagate. `src/middleware.ts` catches it, logs it and rewrites to `pages/503.astro` (status 503, `Retry-After: 60`, `no-store`, a link that loads the same address again, no header categories); asked for directly, `/503` is the 404 page. Any other error is a bug and stays Astro's bare 500. Never put a preview token (or other secret) in an error message: `fetchArticlePreview` leaves the query string out.
+- **Draft preview** (`/preview?token=…`): `PREVIEW_HEADERS` (`no-store`, `X-Robots-Tag: noindex`) plus `noindex`; renders through `ArticleView` like the article page, under a notice with the status and the last save. A missing, bad or expired token is a 403 page and an article deleted since a 404 page, both linking to the back office.
+- **Sitemap, RSS, robots.txt** are endpoints (`*.xml.ts`, `robots.txt.ts`) that build their text with the pure functions in `lib/feeds.ts` (escape everything with `escapeXml`). They are cached like pages; a failing API gives the 503 page.
 - **Lists** (home, `/articles`, category pages): cards from `components/listing/`. Read `?page=` with `parsePage()` and `?q=` with `normalizeQuery()` (`lib/listing.ts`), which keep values inside the API's limits; an invalid page or one past the last is the 404 page. Build list URLs with `pageHref()` (page 1 has no `?page=`; that is the canonical address). Search results pass `noindex` to `BaseLayout` and no canonical link.
 - **Article text** is inline HTML from the API. Render it only through `sanitizeInline()` (`lib/inline-html.ts`, the API's allowlist) with `set:html`, never raw. It renders the stored `<b>` and `<i>` as `<strong>` and `<em>`. YouTube URLs are built from the video id in `lib/youtube.ts`, never taken from content.
+- `/login` is a 301 to `<APP_URL>/login`, the only old portal path the site keeps.
 - **No client-side JavaScript unless a feature needs it** (today: the theme switch and the YouTube player). Use an Astro `<script>` with the logic in `src/scripts/*.ts` (unit-tested), and keep it working without JavaScript where possible. No UI framework islands without a reason recorded in the decision record.
 - Put comments in the frontmatter or `<script>`/`<style>`, not as `<!-- -->` in templates: HTML comments are sent to every reader.
 - Accessibility: one `h1` per page; landmarks from the layout (`banner`, `main`, `contentinfo`); every image needs `alt` (empty only when decorative); keep focus visible. ESLint enforces the jsx-a11y strict rules on `.astro` files.
-- Headers: `src/middleware.ts` adds `Cache-Control` to HTML (`public, max-age=60, stale-while-revalidate=300`; `no-store` for 5xx) and security headers, unless the page set them itself. A page that must not be cached (e.g. the draft preview) sets its own `Cache-Control`. Hashed assets under `/_astro/` get a one-year immutable header from the Node adapter.
+- Headers: `src/middleware.ts` adds `Cache-Control` to HTML, the sitemap, the RSS feed and robots.txt (`public, max-age=60, stale-while-revalidate=300`; `no-store` for 5xx) and security headers to everything, unless the page set them itself. A page that must not be cached (e.g. the draft preview) sets its own `Cache-Control`. Hashed assets under `/_astro/` get a one-year immutable header from the Node adapter.
 - Dates: the gym's time zone is `Europe/Sofia` (`src/lib/dates.ts`); format with `Intl` and an explicit `timeZone`, never server-local time (the container runs in UTC).
 
 ## Internationalization

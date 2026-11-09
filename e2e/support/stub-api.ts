@@ -11,6 +11,9 @@
  *   FAILING_SLUG answers 500.
  * - GET /api/public/article-categories and /:slug: the categories with their article counts,
  *   else a 404; FAILING_SLUG answers 500.
+ * - GET /api/public/sitemap: SITEMAP.
+ * - GET /api/public/preview?token=: the draft for one of PREVIEW_TOKENS; 400 without a token,
+ *   401 for an unknown one, 404 for `deleted` and 500 for `failing`.
  * - GET /media/...: a 1×1 PNG for every image URL in the fixtures.
  * - GET /health: for Playwright to know the server is up.
  */
@@ -20,9 +23,14 @@ import {
   ARTICLES,
   ARTICLES_NEWEST_FIRST,
   CATEGORIES,
+  DRAFT_PREVIEW,
   FAILING_QUERY,
   FAILING_SLUG,
+  PREVIEW_TOKENS,
+  PUBLISHED_PREVIEW,
+  SITEMAP,
   STUB_API_PORT,
+  UNTITLED_PREVIEW,
   categoryWithCount,
   summaryOf,
 } from './articles.ts';
@@ -98,6 +106,27 @@ function listArticles(res: ServerResponse, params: URLSearchParams): void {
   });
 }
 
+const PREVIEWS: Record<string, unknown> = {
+  [PREVIEW_TOKENS.draft]: DRAFT_PREVIEW,
+  [PREVIEW_TOKENS.published]: PUBLISHED_PREVIEW,
+  [PREVIEW_TOKENS.untitled]: UNTITLED_PREVIEW,
+};
+
+function preview(res: ServerResponse, params: URLSearchParams): void {
+  const token = params.get('token') ?? '';
+  if (!token) {
+    json(res, 400, { statusCode: 400, message: ['token should not be empty'] });
+  } else if (token === PREVIEW_TOKENS.failing) {
+    json(res, 500, { statusCode: 500, message: 'Internal server error' });
+  } else if (token === PREVIEW_TOKENS.deleted) {
+    json(res, 404, { statusCode: 404, message: 'Article not found' });
+  } else if (token in PREVIEWS) {
+    json(res, 200, PREVIEWS[token]);
+  } else {
+    json(res, 401, { statusCode: 401, message: 'Invalid preview token' });
+  }
+}
+
 const server = createServer((req, res) => {
   const { pathname, searchParams } = new URL(req.url ?? '/', 'http://stub');
 
@@ -117,6 +146,14 @@ const server = createServer((req, res) => {
 
   if (pathname === '/api/public/articles') {
     listArticles(res, searchParams);
+    return;
+  }
+  if (pathname === '/api/public/sitemap') {
+    json(res, 200, SITEMAP);
+    return;
+  }
+  if (pathname === '/api/public/preview') {
+    preview(res, searchParams);
     return;
   }
   if (pathname === '/api/public/article-categories') {

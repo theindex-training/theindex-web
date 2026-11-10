@@ -7,10 +7,6 @@ name: Build and push Docker images (GHCR)
 # The image is never pushed or deployed unless lint and both test jobs pass.
 # To block merging on red checks, mark "lint", "test-and-build", "e2e" and "build-web" as required in
 # the branch protection settings for main.
-#
-# Deploy is off until the VPS runs this site: it only runs when the repository variable DEPLOY_ENABLED
-# is "true" (Settings > Secrets and variables > Actions > Variables). Set it once docker-compose.yml on
-# the VPS has the `web` service (docs/decision-record.md, section 11).
 on:
   push:
     branches: [ "main" ]
@@ -159,7 +155,7 @@ jobs:
   deploy:
     # Listed explicitly so a red lint or test job always blocks the deploy.
     needs: [lint, test-and-build, e2e, build-web]
-    if: github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to VPS

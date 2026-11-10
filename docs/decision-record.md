@@ -312,7 +312,7 @@ Every router keeps its `-http` twin with the HTTPS redirect, `entrypoints`, `tls
 1. Spaceship DNS: add `A` records `app` and `media` with the same IP as `@`. Wait until they resolve. (Done 2026-11-06.)
 2. Compose phase A: `api` and `front` answer on **both** `theindex.training` and `app.theindex.training` (`Host(...) || Host(...)`). Add the media volume and container. Use `${FRONT_IMAGE}`. Set `CORS_ORIGIN` to both hosts. Check `app.theindex.training` end to end. (Done 2026-11-06: both hosts, the HTTP redirects, a test upload and its headers on `media.` checked.)
 3. Ship the API and back-office work. Admins write the first articles on `app.`.
-4. Compose phase B: `theindex.training` → `web`. `front` and `api` keep only `app.` (both routers each), and `CORS_ORIGIN=https://app.theindex.training`. Update `docker-compose.prod.yml` in `theindex-dev` in the same change. Set the portal's `publicSiteUrl`. In `theindex-web`, set the Actions variable `DEPLOY_ENABLED=true` so merges to `main` redeploy the site (until then its pipeline builds and pushes the image but doesn't deploy).
+4. Compose phase B: `theindex.training` → `web`. `front` and `api` keep only `app.` (both routers each), and `CORS_ORIGIN=https://app.theindex.training`. Update `docker-compose.prod.yml` in `theindex-dev` in the same change. Set the portal's `publicSiteUrl`. In `theindex-web`, the deploy job's `DEPLOY_ENABLED` guard is removed (as in the other two repos), so merges to `main` redeploy the site; until then its pipeline built and pushed the image but didn't deploy.
 5. Google Search Console: verify the domain with a TXT record in Spaceship and submit `https://theindex.training/sitemap.xml`.
 
 **Backups:** Contabo's daily instance backups include the database and the media volume. A nightly `pg_dump` is recommended on top (a snapshot of a running Postgres isn't guaranteed to restore cleanly). **Never print or share `traefik/acme.json`**: it holds the certificates' private keys.
@@ -324,7 +324,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | # | Repo | Item | Depends on | Status |
 |---|---|---|---|---|
 | 1 | web | Scaffold: Astro, tokens, fonts, layout, header/footer, theme switch, 404 page, cache and security headers, lint/format/tests, Dockerfile, `CLAUDE.md` | | Done (theindex-web#2) |
-| 2 | web | CI workflow (needs the owner's approval) | 1 | Done (theindex-web#3); deploy off until `DEPLOY_ENABLED` |
+| 2 | web | CI workflow (needs the owner's approval) | 1 | Done (theindex-web#3); deploy guard removed at compose phase B |
 | 3 | api | Slug transliteration util | | Done (theindex-api#50) |
 | 4 | api | Media: upload, processing, storage, library | | Done (theindex-api#51); uploads answer 503 until item 8 |
 | 5 | api | Article categories: admin CRUD | 3 | Done (theindex-api#52) |

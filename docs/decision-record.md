@@ -2,7 +2,7 @@
 
 The reference for building the public site of The Index (`theindex-web`) and the content features it needs in `theindex-api` and `theindex-front`. It records what was decided, why, and what the first version (MVP) contains. Update it when a decision changes; don't let the code and this file disagree.
 
-- **Status:** agreed, MVP in progress (items 1–14 done, see section 12)
+- **Status:** agreed, MVP done (items 1–15, see section 12); the site has been live on `theindex.training` since 2026-11-10
 - **Decided:** 2026-11-05; changes since then are listed in section 15
 - **Repos:** `theindex-web` (this repo, public site), `theindex-api` (data and endpoints), `theindex-front` (back office), `theindex-dev` (Docker templates, including the production compose file and the media container's nginx config; may become `theindex-infra`)
 
@@ -218,7 +218,7 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 - **Autosave:** about 2 seconds after the last change, and when leaving the page. Only the changed fields are sent, one request at a time, each based on the revision the last one returned. A field over its limit waits, with its error, while the others are saved. On a 409, the page tells the admin the article changed in another tab, stops saving and offers to reload.
 - **Editor.js blocks:** only the ones in section 7. The list tool offers no checklists, start numbers or counter types and the quote no alignment, since the API keeps none of them. The image and YouTube blocks are our own tools that store `mediaId` / `videoId` directly, so the stored shape and the editor's data are the same (only the list's `meta` is mapped). A video comes from a pasted YouTube link or the toolbox's link field; the back office shows its thumbnail, not the player. The editor's own UI text is translated (БГ / EN).
 - **Media picker:** a dialog to upload (alt text required) or choose from the library. Used by the featured image and the image block.
-- **Preview:** saves what is left, then opens `<publicSiteUrl>/preview?token=…` in a new tab (the tab opens in the click, so it isn't blocked as a pop-up, and gets its address when the token arrives). New environment value `publicSiteUrl`: `https://theindex.training` in production, `http://localhost:4321` (the site's dev server) in development. It also builds the "View on site" links. Until compose phase B, those addresses don't serve the site yet.
+- **Preview:** saves what is left, then opens `<publicSiteUrl>/preview?token=…` in a new tab (the tab opens in the click, so it isn't blocked as a pop-up, and gets its address when the token arrives). New environment value `publicSiteUrl`: `https://theindex.training` in production, `http://localhost:4321` (the site's dev server) in development. It also builds the "View on site" links. Those addresses serve the site since compose phase B (2026-11-10).
 - **Navigation:** a "Съдържание" item at the end of the Manage group, admins only (in the More sheet on phones). A URL-only area and the content-writer redirect on login are phase 2 decisions.
 - The portal's rules apply as usual: all text in `bg.json` and `en.json`, `ARTICLE_STATUS` enum labels, design tokens only (Editor.js's default styles need overrides for dark mode), `Eager` change detection, characterization-test rules for new logic.
 
@@ -251,15 +251,16 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 
 ## 11. Infrastructure
 
-Current state (2026-11-06, after compose phase A): `/opt/theindex/docker-compose.yml` on the Contabo VPS, a copy of `docker-compose.prod.yml` in `theindex-dev`, next to `/opt/theindex/media/default.conf` (`media/default.conf` there). The VPS copy is updated by hand, so change both together. Services:
+Current state (2026-11-10, after compose phase B): `/opt/theindex/docker-compose.yml` on the Contabo VPS, a copy of `docker-compose.prod.yml` in `theindex-dev`, next to `/opt/theindex/media/default.conf` (`media/default.conf` there). The VPS copy is updated by hand, so change both together. Services:
 - `traefik` (v3.6.1, Let's Encrypt HTTP challenge, www → apex redirect) and `db`.
-- `api` (`/api` on both `theindex.training` and `app.theindex.training`) with `MEDIA_STORAGE_DIR=/data/media` on the `theindex_media` volume and `MEDIA_PUBLIC_URL=https://media.theindex.training`.
-- `front` (`${FRONT_IMAGE}`, everything else on both hosts).
+- `web` (`${WEB_IMAGE}`, the public site on `theindex.training`, port 4321).
+- `api` (`/api` on `app.theindex.training`) with `MEDIA_STORAGE_DIR=/data/media` on the `theindex_media` volume and `MEDIA_PUBLIC_URL=https://media.theindex.training`.
+- `front` (`${FRONT_IMAGE}`, everything else on `app.theindex.training`).
 - `media` (`nginx:alpine`, the `theindex_media` volume read-only on `media.theindex.training`).
 
-`CORS_ORIGIN` in `.env` lists both hosts until phase B. Each repo's deploy job runs `docker compose pull && docker compose up -d` for the whole stack.
+`CORS_ORIGIN` in `.env` is `https://app.theindex.training`; the site calls the API server side over the internal network, so it needs no CORS. The API's and the portal's deploy jobs run `docker compose pull && docker compose up -d` for the whole stack; the site's runs it for `web` only.
 
-**Target labels and services after phase B** (sketch; the real file is `docker-compose.prod.yml` in `theindex-dev`):
+**Labels and services** (sketch; the real file is `docker-compose.prod.yml` in `theindex-dev`):
 
 ```yaml
   api:
@@ -311,9 +312,9 @@ Every router keeps its `-http` twin with the HTTPS redirect, `entrypoints`, `tls
 **Cutover order** (certificates are requested over HTTP, so DNS must resolve first or Let's Encrypt fails and rate-limits):
 1. Spaceship DNS: add `A` records `app` and `media` with the same IP as `@`. Wait until they resolve. (Done 2026-11-06.)
 2. Compose phase A: `api` and `front` answer on **both** `theindex.training` and `app.theindex.training` (`Host(...) || Host(...)`). Add the media volume and container. Use `${FRONT_IMAGE}`. Set `CORS_ORIGIN` to both hosts. Check `app.theindex.training` end to end. (Done 2026-11-06: both hosts, the HTTP redirects, a test upload and its headers on `media.` checked.)
-3. Ship the API and back-office work. Admins write the first articles on `app.`.
-4. Compose phase B: `theindex.training` → `web`. `front` and `api` keep only `app.` (both routers each), and `CORS_ORIGIN=https://app.theindex.training`. Update `docker-compose.prod.yml` in `theindex-dev` in the same change. Set the portal's `publicSiteUrl`. In `theindex-web`, the deploy job's `DEPLOY_ENABLED` guard is removed (as in the other two repos), so merges to `main` redeploy the site; until then its pipeline built and pushed the image but didn't deploy.
-5. Google Search Console: verify the domain with a TXT record in Spaceship and submit `https://theindex.training/sitemap.xml`.
+3. Ship the API and back-office work. Admins write the first articles on `app.`. (Done: items 4–7 and 9–11.)
+4. Compose phase B: `theindex.training` → `web`. `front` and `api` keep only `app.` (both routers each), and `CORS_ORIGIN=https://app.theindex.training`. Update `docker-compose.prod.yml` in `theindex-dev` in the same change. Set the portal's `publicSiteUrl`. In `theindex-web`, the deploy job's `DEPLOY_ENABLED` guard is removed (as in the other two repos), so merges to `main` redeploy the site; until then its pipeline built and pushed the image but didn't deploy. (Done 2026-11-10: theindex-dev#2 on the VPS, `publicSiteUrl` since theindex-front#81, the guard removed in theindex-web#14, whose merge redeployed the site.)
+5. Google Search Console: verify the domain with a TXT record in Spaceship and submit `https://theindex.training/sitemap.xml`. (Done 2026-11-11: a Domain property, verified by the `google-site-verification` TXT record on `@`, which must stay; the sitemap was read successfully.)
 
 **Backups:** Contabo's daily instance backups include the database and the media volume. A nightly `pg_dump` is recommended on top (a snapshot of a running Postgres isn't guaranteed to restore cleanly). **Never print or share `traefik/acme.json`**: it holds the certificates' private keys.
 
@@ -337,7 +338,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 | 12 | web | Article page: block renderer, SEO head, JSON-LD, YouTube player | 1, 7 | Done (theindex-web#11) |
 | 13 | web | Home, article list, category pages, pagination, search | 12 | Done (theindex-web#12) |
 | 14 | web | Sitemap, RSS, robots, 503 page, `/login` redirect, preview route | 12 | Done (theindex-web#13) |
-| 15 | infra | Compose phase B, Search Console | 8, 11, 14 | |
+| 15 | infra | Compose phase B, Search Console | 8, 11, 14 | Done (2026-11-10/11, on the VPS; theindex-dev#2, theindex-web#14) |
 
 ## 13. Phase 2 and later
 
@@ -354,6 +355,7 @@ Each item is roughly one PR. API items come first because the other two repos de
 - **Home featured article:** the newest published article. A manual "featured" flag is phase 2.
 - **Categories in the header:** all categories with published articles, in `sortOrder`. If the list grows too long, show a "Categories" menu instead.
 - **Reading time** on article cards ("5 мин четене"): not in the MVP unless asked for.
+- **The portal in search results:** the Search Console Domain property also covers `app.theindex.training`, which has no `robots.txt` or `noindex`, so Google may index its login page. Left as is; add `noindex` to the portal if it shows up in Search Console.
 
 ## 15. Changes since 2026-11-05
 
@@ -415,3 +417,7 @@ Each item is roughly one PR. API items come first because the other two repos de
   - When the API fails (network, timeout, 5xx), the middleware shows a 503 page in place of the page: `Retry-After: 60`, `no-store`, a "try again" link to the same address, and the header without categories (the API is down). Other errors are still a bare 500. `/503` itself is the 404 page.
   - `/login` is a 301 to `<APP_URL>/login`.
   - `/preview?token=…` shows the draft laid out like the article page (the same component), under a notice with the status (Чернова / Публикувана / Свалена), the last save and, for a published article, a link to the live page. `no-store`, `X-Robots-Tag: noindex` and `noindex`, no canonical link or JSON-LD. A missing, bad or expired token is a 403 page and an article deleted since a 404 page, both linking to the back office; the token never appears in logs (sections 4, 10).
+- **2026-11-10, compose phase B and Search Console (item 15, theindex-dev#2, theindex-web#14):**
+  - `theindex.training` serves the site (`web`); the portal and `/api` answer only on `app.theindex.training`, and `CORS_ORIGIN` lists only that host. The old portal addresses on `theindex.training` are the site's 404 page, except `/login` (301 to the portal); people logged in there log in again on `app.`, since the token is stored per origin.
+  - The site's deploy job lost its `DEPLOY_ENABLED` guard instead of the variable being set, so it runs on every push to `main` like the other two repos'.
+  - Search Console uses a Domain property (it covers every subdomain). A Domain property's sitemap field takes the full address, `https://theindex.training/sitemap.xml`, not a path. Analytics stays in phase 2 (D13) (sections 9, 11, 12, 14).

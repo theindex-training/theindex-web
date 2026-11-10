@@ -70,7 +70,7 @@ docs/decision-record.md  # decisions, architecture and MVP backlog
 - **theindex-api** owns the data. The site calls it server side only, at `API_INTERNAL_URL` (in production `http://api:3000/api` on the internal Docker network), using the `/api/public/...` endpoints listed in the decision record. Browser code never calls the API.
 - **theindex-front** is the back office at `app.theindex.training`. The header's "Вход" links to `APP_URL`. The back office opens draft previews on this site (`/preview?token=…`, backlog item 14).
 - If a page needs a field or endpoint that doesn't exist, the change belongs in theindex-api first; flag cross-repo changes to the user.
-- Deployment: the compose file on the VPS (`/opt/theindex`, templates in `theindex-dev`) runs this image as `web` behind Traefik. See section 11 of the decision record for the target routing and the cutover order.
+- Deployment: the compose file on the VPS (`/opt/theindex`, templates in `theindex-dev`) runs this image as `web` behind Traefik. See section 11 of the decision record for the routing, the services and how the cutover went.
 
 ## Design system
 The look is the portal's "Chalk & Iron" design system. **theindex-front's `CLAUDE.md` ("Design system") and `src/styles.scss` are the source of truth**; don't fork the design here.

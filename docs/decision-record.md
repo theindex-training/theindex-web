@@ -68,6 +68,7 @@ flowchart LR
 | `/preview?token=…` | Draft preview | `noindex`, `no-store`; token from the back office, short-lived |
 | `/sitemap.xml`, `/rss.xml`, `/robots.txt` | | Generated from the API on request |
 | `/login` | 301 to `https://app.theindex.training/login` | Only old portal path we keep |
+| `/privacy` | Privacy policy | Static text (`privacy.*` in `bg.json`) for the portal and the site; linked from the footer, the portal's consent checkboxes and Google sign-in's consent screen. In the sitemap, dated when the text last changed (`lib/privacy.ts`) |
 
 **Slug rules** (articles and categories; one implementation in the API: `src/common/utils/slug.util.ts`, with `slug.util.spec.ts`):
 - Generated from the title (or category name) with the official Bulgarian transliteration (Streamlined System, Закон за транслитерацията 2009):
@@ -421,3 +422,4 @@ Each item is roughly one PR. API items come first because the other two repos de
   - `theindex.training` serves the site (`web`); the portal and `/api` answer only on `app.theindex.training`, and `CORS_ORIGIN` lists only that host. The old portal addresses on `theindex.training` are the site's 404 page, except `/login` (301 to the portal); people logged in there log in again on `app.`, since the token is stored per origin.
   - The site's deploy job lost its `DEPLOY_ENABLED` guard instead of the variable being set, so it runs on every push to `main` like the other two repos'.
   - Search Console uses a Domain property (it covers every subdomain). A Domain property's sitemap field takes the full address, `https://theindex.training/sitemap.xml`, not a path. Analytics stays in phase 2 (D13) (sections 9, 11, 12, 14).
+- **2026-11-23, privacy policy:** `/privacy` publishes the privacy policy of the portal and the site (the controller, what is collected and why, who sees it, processors, retention, browser storage, rights). Google requires it to publish "Sign in with Google" (theindex-api#81, theindex-front#111), and the portal's consent checkboxes link to it. Linked from the footer and listed in the sitemap (section 4).

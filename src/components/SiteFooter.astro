@@ -1,6 +1,7 @@
 ---
 import { t } from '../i18n';
 import { currentYear } from '../lib/dates';
+import { PRIVACY_PATH } from '../lib/privacy';
 import ThemeSwitch from './ThemeSwitch.astro';
 ---
 
@@ -9,6 +10,11 @@ import ThemeSwitch from './ThemeSwitch.astro';
     <p class="site-footer__copy">
       {t('footer.copyright', { year: String(currentYear()) })}
     </p>
+    <nav class="site-footer__links" aria-label={t('footer.links')}>
+      <a class="site-footer__link" href={PRIVACY_PATH}>
+        {t('footer.privacy')}
+      </a>
+    </nav>
     <ThemeSwitch />
   </div>
 </footer>
@@ -31,5 +37,17 @@ import ThemeSwitch from './ThemeSwitch.astro';
   .site-footer__copy {
     margin: 0;
     font-size: var(--text-sm);
+  }
+
+  .site-footer__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    color: var(--nav-text-strong);
+    font-size: var(--text-sm);
+  }
+
+  .site-footer__link:focus-visible {
+    outline-color: var(--nav-accent);
   }
 </style>

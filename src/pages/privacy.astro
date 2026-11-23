@@ -1,0 +1,159 @@
+---
+// The privacy policy (GDPR, Art. 13), for the portal (app.theindex.training) and this site. Its text
+// is in bg.json (`privacy.*`); the portal's Register and account setup forms link here, and Google
+// sign-in's consent screen names it.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t } from '../i18n';
+import { formatLongDate } from '../lib/dates';
+import { PRIVACY_PATH, PRIVACY_UPDATED } from '../lib/privacy';
+---
+
+<BaseLayout
+  title={t('privacy.title')}
+  description={t('privacy.description')}
+  canonicalPath={PRIVACY_PATH}
+>
+  <article class="container policy">
+    <header class="policy__header">
+      <h1 class="policy__title">{t('privacy.title')}</h1>
+      <p class="policy__updated">
+        {t('privacy.updated', { date: formatLongDate(PRIVACY_UPDATED) })}
+      </p>
+    </header>
+
+    <div class="policy__body">
+      <p>{t('privacy.intro')}</p>
+
+      <h2>{t('privacy.controller.heading')}</h2>
+      <p data-testid="privacy-controller">{t('privacy.controller.text')}</p>
+      <p>{t('privacy.controller.contact')}</p>
+
+      <h2>{t('privacy.data.heading')}</h2>
+      <ul>
+        <li>{t('privacy.data.account')}</li>
+        <li>{t('privacy.data.contact')}</li>
+        <li>{t('privacy.data.photo')}</li>
+        <li>{t('privacy.data.training')}</li>
+        <li>{t('privacy.data.results')}</li>
+        <li>{t('privacy.data.nickname')}</li>
+        <li>{t('privacy.data.consent')}</li>
+        <li>{t('privacy.data.technical')}</li>
+        <li>{t('privacy.data.google')}</li>
+      </ul>
+
+      <h2>{t('privacy.purposes.heading')}</h2>
+      <ul>
+        <li>{t('privacy.purposes.contract')}</li>
+        <li>{t('privacy.purposes.legal')}</li>
+        <li>{t('privacy.purposes.consent')}</li>
+        <li>{t('privacy.purposes.security')}</li>
+      </ul>
+
+      <h2>{t('privacy.visibility.heading')}</h2>
+      <ul>
+        <li>{t('privacy.visibility.staff')}</li>
+        <li>{t('privacy.visibility.members')}</li>
+        <li>{t('privacy.visibility.noSale')}</li>
+      </ul>
+
+      <h2>{t('privacy.processors.heading')}</h2>
+      <ul>
+        <li>{t('privacy.processors.hosting')}</li>
+        <li>{t('privacy.processors.google')}</li>
+        <li>{t('privacy.processors.authorities')}</li>
+      </ul>
+
+      <h2>{t('privacy.retention.heading')}</h2>
+      <ul>
+        <li>{t('privacy.retention.membership')}</li>
+        <li>{t('privacy.retention.accounting')}</li>
+        <li>{t('privacy.retention.yours')}</li>
+        <li>{t('privacy.retention.technical')}</li>
+      </ul>
+
+      <h2>{t('privacy.storage.heading')}</h2>
+      <p>{t('privacy.storage.text')}</p>
+
+      <h2>{t('privacy.rights.heading')}</h2>
+      <p>{t('privacy.rights.intro')}</p>
+      <ul>
+        <li>{t('privacy.rights.access')}</li>
+        <li>{t('privacy.rights.rectify')}</li>
+        <li>{t('privacy.rights.erase')}</li>
+        <li>{t('privacy.rights.restrict')}</li>
+        <li>{t('privacy.rights.portability')}</li>
+        <li>{t('privacy.rights.object')}</li>
+        <li>{t('privacy.rights.withdraw')}</li>
+      </ul>
+      <p>{t('privacy.rights.how')}</p>
+      <p>{t('privacy.rights.complaint')}</p>
+
+      <h2>{t('privacy.security.heading')}</h2>
+      <p>{t('privacy.security.text')}</p>
+
+      <h2>{t('privacy.changes.heading')}</h2>
+      <p>{t('privacy.changes.text')}</p>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  /* One reading column, like an article (ArticleView, ArticleBlocks). */
+  .policy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    max-width: 44rem;
+  }
+
+  .policy__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .policy__title {
+    margin: 0;
+    overflow-wrap: break-word;
+  }
+
+  .policy__updated {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  .policy__body {
+    font-size: var(--text-lg);
+    line-height: 1.65;
+    overflow-wrap: break-word;
+  }
+
+  .policy__body > * {
+    margin-block: 0;
+  }
+
+  .policy__body > * + * {
+    margin-top: var(--space-5);
+  }
+
+  .policy__body > h2 {
+    margin-top: var(--space-10);
+  }
+
+  .policy__body > h2 + * {
+    margin-top: var(--space-3);
+  }
+
+  .policy__body ul {
+    padding-left: var(--space-6);
+  }
+
+  .policy__body li + li {
+    margin-top: var(--space-2);
+  }
+
+  .policy__body li::marker {
+    color: var(--accent-text);
+  }
+</style>

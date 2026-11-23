@@ -1,4 +1,5 @@
 import { categoryPath } from './navigation';
+import { PRIVACY_PATH, PRIVACY_UPDATED } from './privacy';
 import type { PublicArticleSummary, PublicSitemap } from './public-api';
 import { absoluteUrl, articlePath } from './seo';
 
@@ -57,8 +58,8 @@ function w3cDate(date: string): string {
 }
 
 /**
- * `sitemap.xml`: the home page, `/articles`, every published article and every category with
- * one. The home page and `/articles` list the articles, so they change when one is published.
+ * `sitemap.xml`: the home page, `/articles`, every published article, every category with
+ * one and the privacy policy (dated when its text last changed). The home page and `/articles` list the articles, so they change when one is published.
  * Further list pages (`?page=2`) and search results are left out: Google finds the pages through
  * the articles, and search results are `noindex`.
  */
@@ -75,6 +76,7 @@ export function sitemapXml(siteUrl: string, sitemap: PublicSitemap): string {
       path: categoryPath(c.slug),
       lastmod: c.lastmod,
     })),
+    { path: PRIVACY_PATH, lastmod: PRIVACY_UPDATED },
   ];
 
   const urls = entries.map(({ path, lastmod }) => {

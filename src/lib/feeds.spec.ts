@@ -61,7 +61,7 @@ describe('sitemapXml', () => {
     }));
   }
 
-  it('lists the home page, the article list, every article and every category', () => {
+  it('lists the home page, the article list, every article, every category and the privacy policy', () => {
     expect(entries(sitemapXml(SITE, sitemap))).toEqual([
       { loc: `${SITE}/`, lastmod: '2026-11-06T09:30:00.000Z' },
       { loc: `${SITE}/articles`, lastmod: '2026-11-06T09:30:00.000Z' },
@@ -71,6 +71,8 @@ describe('sitemapXml', () => {
         loc: `${SITE}/articles/category/tehnika`,
         lastmod: '2026-11-04T12:00:00.000Z',
       },
+      // Dated by the day its text last changed, not by the articles.
+      { loc: `${SITE}/privacy`, lastmod: '2026-11-23T00:00:00.000Z' },
     ]);
   });
 
@@ -82,11 +84,12 @@ describe('sitemapXml', () => {
     expect(entries(xml)[2].lastmod).toBe('2026-11-05T23:30:00.000Z');
   });
 
-  it('lists only the home page and the article list, without dates, before anything is published', () => {
+  it('lists the home page and the article list without dates (and the privacy policy) before anything is published', () => {
     expect(entries(sitemapXml(SITE, { articles: [], categories: [] }))).toEqual(
       [
         { loc: `${SITE}/`, lastmod: null },
         { loc: `${SITE}/articles`, lastmod: null },
+        { loc: `${SITE}/privacy`, lastmod: '2026-11-23T00:00:00.000Z' },
       ],
     );
   });

@@ -32,7 +32,7 @@ function elements(xml: string, name: string): string[] {
 
 test.describe('sitemap.xml', () => {
   test(
-    'lists the home page, the article list, every article and every category',
+    'lists the home page, the article list, every article, every category and the privacy policy',
     { tag: '@desktop' },
     async ({ request }) => {
       const response = await request.get('/sitemap.xml');
@@ -51,6 +51,7 @@ test.describe('sitemap.xml', () => {
         `${SITE_URL}/articles`,
         ...ARTICLES_NEWEST_FIRST.map((a) => `${SITE_URL}/articles/${a.slug}`),
         ...CATEGORIES.map((c) => `${SITE_URL}/articles/category/${c.slug}`),
+        `${SITE_URL}/privacy`,
       ]);
       // An article's lastmod is its last publish; the lists changed with the latest of those.
       expect(xml).toContain(

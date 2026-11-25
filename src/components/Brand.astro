@@ -1,16 +1,44 @@
 ---
-// The official red logo; it works on the dark header in both themes (as in the portal).
+// The official red logo; it works on the dark header in both themes (as in the portal). Over
+// Christmas it wears a Santa hat, like the portal's (shown while the holiday effects are on).
 import { t } from '../i18n';
+import { pageHolidays } from '../lib/holidays';
+
+const christmas = pageHolidays(Astro.url).state.christmas;
 ---
 
 <a class="brand" href="/" aria-label={t('header.homeLink')}>
-  <img
-    class="brand__logo"
-    src="/brand/the-index-logo-red.png"
-    alt=""
-    width="640"
-    height="270"
-  />
+  <span class="brand__mark">
+    <img
+      class="brand__logo"
+      src="/brand/the-index-logo-red.png"
+      alt=""
+      width="640"
+      height="270"
+    />
+    {christmas && (
+      <svg
+        class="brand__hat"
+        viewBox="0 0 120 100"
+        aria-hidden="true"
+        data-testid="brand-santa-hat"
+      >
+        <path
+          class="brand__hat-red"
+          d="M22 80C30 44 58 10 96 16c14 2 20 16 10 24-14-10-34 2-40 42Z"
+        />
+        <path
+          class="brand__hat-shade"
+          d="M66 82c6-40 26-52 40-42-8-4-22 4-28 40Z"
+        />
+        <path
+          class="brand__hat-fur"
+          d="M10 76q30-12 66 0 6 12-4 18-32-10-60 0-10-8-2-18Z"
+        />
+        <circle class="brand__hat-fur" cx="107" cy="42" r="11" />
+      </svg>
+    )}
+  </span>
 </a>
 
 <style>
@@ -35,6 +63,56 @@ import { t } from '../i18n';
   @media (min-width: 768px) {
     .brand__logo {
       height: 3rem;
+    }
+  }
+
+  .brand__mark {
+    position: relative;
+    display: block;
+  }
+
+  /* Over Christmas, while the effects are on (the switch removes data-holiday-snow). */
+  .brand__hat {
+    display: none;
+    position: absolute;
+    top: -38%;
+    left: -9%;
+    width: 34%;
+    overflow: visible;
+    pointer-events: none;
+    transform: rotate(-16deg);
+    transform-origin: 70% 90%;
+    animation: brand-hat-sway 5s ease-in-out infinite;
+  }
+
+  :global(html[data-holiday-snow]) .brand__hat {
+    display: block;
+  }
+
+  .brand__hat-red {
+    fill: var(--holiday-red);
+  }
+
+  .brand__hat-shade {
+    fill: var(--holiday-red-dark);
+    opacity: 0.6;
+  }
+
+  .brand__hat-fur {
+    fill: var(--snow-fill);
+    stroke: var(--snow-edge);
+    stroke-width: 1.2;
+  }
+
+  @keyframes brand-hat-sway {
+    50% {
+      transform: rotate(-9deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand__hat {
+      animation: none;
     }
   }
 </style>

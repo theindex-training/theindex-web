@@ -38,6 +38,10 @@
   --scrim: rgba(18, 18, 17, 0.55);
   --snow-fill: #ffffff;
   --snow-edge: #a9b6c3;
+  --holiday-red: #d93a2f;
+  --holiday-red-dark: #9e1b13;
+  --holiday-green: #2f8f57;
+  --holiday-gold: #e3a92b;
   --shadow-sm: 0 1px 2px rgba(18, 18, 17, 0.06);
   --shadow-md: 0 10px 24px rgba(18, 18, 17, 0.12);
 }
@@ -76,6 +80,10 @@
   --scrim: rgba(0, 0, 0, 0.65);
   --snow-fill: #eef1f4;
   --snow-edge: #7d8a97;
+  --holiday-red: #d93a2f;
+  --holiday-red-dark: #9e1b13;
+  --holiday-green: #2f8f57;
+  --holiday-gold: #e3a92b;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.5);
 }
@@ -539,7 +547,7 @@ html[data-holiday-snow]
   content: '';
   position: absolute;
   right: -0.06em;
-  bottom: calc(100% - 0.26em);
+  bottom: calc(100% - 0.17em);
   left: -0.06em;
   height: calc(0.06em + 0.2em * var(--holiday-snow-depth, 0));
   border-radius: 0.3em 0.3em 0.04em 0.04em;

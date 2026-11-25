@@ -1,0 +1,30 @@
+---
+// The holidays' falling snow (Dec 1 – Jan 6): a full-window canvas that ignores the pointer,
+// shown by src/scripts/holidays.ts unless the effects are off or the OS asks for less motion.
+// Rendered only while it snows, so the rest of the year the page has none of it.
+---
+
+<canvas
+  class="holiday-snow"
+  data-holiday-snow-canvas
+  data-testid="holiday-snow"
+  aria-hidden="true"
+  hidden
+></canvas>
+
+<script>
+  import { initHolidays } from '../../scripts/holidays';
+
+  initHolidays(document, window);
+</script>
+
+<style>
+  .holiday-snow {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+</style>

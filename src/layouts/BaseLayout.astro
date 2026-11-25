@@ -17,9 +17,12 @@ import '../styles/global.scss';
 
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import AdventTeaser from '../components/holidays/AdventTeaser.astro';
+import HolidayEffects from '../components/holidays/HolidayEffects.astro';
 import { DEFAULT_LOCALE, t } from '../i18n';
 import { getConfig } from '../lib/config';
 import { RSS_PATH } from '../lib/feeds';
+import { pageHolidays } from '../lib/holidays';
 import {
   OG_LOCALES,
   absoluteUrl,
@@ -67,10 +70,23 @@ const documentTitle = title === appName ? title : `${title} | ${appName}`;
 const lang = Astro.currentLocale ?? DEFAULT_LOCALE;
 const canonical = canonicalPath ? absoluteUrl(siteUrl, canonicalPath) : null;
 const socialImage = image ?? defaultSocialImage(siteUrl, appName);
+// The holidays (lib/holidays.ts): marked on <html> for the snow caps and src/scripts/holidays.ts.
+const { state: holidays, preview: holidayPreview } = pageHolidays(Astro.url);
 ---
 
 <!doctype html>
-<html lang={lang}>
+<html
+  lang={lang}
+  data-holiday-season={holidays.season ?? undefined}
+  data-holiday-december={holidays.december ? '' : undefined}
+  data-holiday-snow={holidays.december ? '' : undefined}
+  data-holiday-preview={holidayPreview && holidays.active ? '' : undefined}
+  style={
+    holidays.december
+      ? `--holiday-snow-depth: ${holidays.snowDepth.toFixed(3)}`
+      : undefined
+  }
+>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -134,6 +150,26 @@ const socialImage = image ?? defaultSocialImage(siteUrl, appName);
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.style.colorScheme = theme;
       })();
+      // The holidays' storage (src/scripts/holidays.ts): deleted outside the season (Dec 1 – Jan 10)
+      // or when it is from another one, and the snow caps left off when the effects were switched
+      // off. A ?holidayDate= preview neither reads nor changes it.
+      (function () {
+        var root = document.documentElement;
+        if (root.hasAttribute('data-holiday-preview')) return;
+        var season = Number(root.getAttribute('data-holiday-season')) || 0;
+        try {
+          var stored = JSON.parse(localStorage.getItem('holidays') || 'null');
+          if (stored && (!season || stored.season !== season)) {
+            localStorage.removeItem('holidays');
+          } else if (stored && stored.effects === false) {
+            root.removeAttribute('data-holiday-snow');
+          }
+        } catch (e) {
+          try {
+            localStorage.removeItem('holidays');
+          } catch (e2) {}
+        }
+      })();
     </script>
   </head>
   <body>
@@ -141,9 +177,11 @@ const socialImage = image ?? defaultSocialImage(siteUrl, appName);
       {t('common.skipToContent')}
     </a>
     <SiteHeader categories={headerCategories} />
+    {holidays.advent && <AdventTeaser />}
     <main id="main" tabindex="-1">
       <slot />
     </main>
-    <SiteFooter />
+    <SiteFooter holidaySwitch={holidays.december} />
+    {holidays.december && <HolidayEffects />}
   </body>
 </html>

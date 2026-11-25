@@ -1,0 +1,79 @@
+---
+// "Празнични ефекти" on/off in the footer while it snows. It needs JavaScript, so it stays hidden
+// until src/scripts/holidays.ts wires it. Off stops the snow and the snow caps for this season.
+import { t } from '../../i18n';
+---
+
+<div class="holiday-switch-field" data-holiday-switch-field hidden>
+  <label class="holiday-switch">
+    <span>{t('holidays.effects')}</span>
+    <input
+      class="holiday-switch__input"
+      type="checkbox"
+      role="switch"
+      data-holiday-switch
+      checked
+    />
+    <span class="holiday-switch__track" aria-hidden="true"></span>
+  </label>
+</div>
+
+<style>
+  /* On the dark footer (--nav-* tokens), like the theme switch next to it. */
+  .holiday-switch {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-lg);
+    background: var(--nav-surface);
+    color: var(--nav-text-strong);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .holiday-switch__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .holiday-switch__track {
+    position: relative;
+    flex: none;
+    width: 2.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--nav-text);
+    border-radius: var(--radius-pill);
+    transition: background-color var(--transition-fast);
+  }
+
+  .holiday-switch__track::after {
+    content: '';
+    position: absolute;
+    top: 0.1875rem;
+    left: 0.1875rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--nav-text);
+    transition: transform var(--transition-fast);
+  }
+
+  .holiday-switch__input:checked + .holiday-switch__track {
+    border-color: var(--nav-text-strong);
+    background: var(--nav-text-strong);
+  }
+
+  .holiday-switch__input:checked + .holiday-switch__track::after {
+    background: var(--nav-bg);
+    transform: translateX(1rem);
+  }
+
+  .holiday-switch__input:focus-visible + .holiday-switch__track {
+    outline: 2px solid var(--nav-accent);
+    outline-offset: 2px;
+  }
+</style>

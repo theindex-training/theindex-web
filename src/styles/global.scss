@@ -36,6 +36,8 @@
   --nav-border: #3a3934;
   --nav-accent: #ff4a3d;
   --scrim: rgba(18, 18, 17, 0.55);
+  --snow-fill: #ffffff;
+  --snow-edge: #a9b6c3;
   --shadow-sm: 0 1px 2px rgba(18, 18, 17, 0.06);
   --shadow-md: 0 10px 24px rgba(18, 18, 17, 0.12);
 }
@@ -72,6 +74,8 @@
   --nav-border: #2d2c29;
   --nav-accent: #ff4a3d;
   --scrim: rgba(0, 0, 0, 0.65);
+  --snow-fill: #eef1f4;
+  --snow-edge: #7d8a97;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.5);
 }
@@ -517,4 +521,44 @@ main:focus {
 
 .skip-link:focus-visible {
   transform: none;
+}
+
+// The holidays' snow cap on the page titles (December; lib/holidays.ts). <html> has
+// `data-holiday-snow` while it snows and the effects are on; --holiday-snow-depth (0–1) grows up
+// to Christmas Eve. The same cap as the portal's page titles (theindex-front's page-header).
+html[data-holiday-snow] :is(.home__title, .listing__title, .article__title) {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
+html[data-holiday-snow]
+  :is(.home__title, .listing__title, .article__title)::before,
+html[data-holiday-snow]
+  :is(.home__title, .listing__title, .article__title)::after {
+  content: '';
+  position: absolute;
+  right: -0.06em;
+  bottom: calc(100% - 0.26em);
+  left: -0.06em;
+  height: calc(0.06em + 0.2em * var(--holiday-snow-depth, 0));
+  border-radius: 0.3em 0.3em 0.04em 0.04em;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 16' preserveAspectRatio='none'%3E%3Cpath d='M0 16V9C5 3 10 3 14 6s8 5 14 1 9-5 14-2 9 5 14 3V16Z'/%3E%3C/svg%3E")
+    repeat-x left bottom / 1.1em 100%;
+  pointer-events: none;
+}
+
+// A little taller and wider than the snow, so it outlines its top on light pages.
+html[data-holiday-snow]
+  :is(.home__title, .listing__title, .article__title)::before {
+  right: -0.08em;
+  left: -0.08em;
+  height: calc(0.06em + 0.2em * var(--holiday-snow-depth, 0) + 2px);
+  background: var(--snow-edge);
+  transform: translateY(1px);
+}
+
+html[data-holiday-snow]
+  :is(.home__title, .listing__title, .article__title)::after {
+  background: var(--snow-fill);
 }

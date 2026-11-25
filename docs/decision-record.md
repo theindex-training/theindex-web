@@ -233,7 +233,7 @@ All admin endpoints: `@UseGuards(JwtAuthGuard, RolesGuard)`, `@Roles(AccountRole
 - **Layout:**
   - Header: logo, "Статии", the categories, and "Вход" linking to `https://app.theindex.training`.
   - Footer: © The Index. No address, since there is more than one gym.
-- **Interactivity (islands):** the theme switch and the YouTube player only.
+- **Interactivity (islands):** the theme switch and the YouTube player, plus the holidays' snow and its footer switch from Dec 1 to Jan 6 (section 15, 2026-11-25).
 - **i18n:** Astro i18n with `defaultLocale: 'bg'` and no prefix. UI text lives in translation files from day one. Dates are formatted for `bg` in `Europe/Sofia`.
 - **SEO on every page:**
   - `<title>` ("<title> | The Index"), meta description (SEO description, excerpt or the start of the text), absolute canonical URL, `<html lang="bg">`.
@@ -421,3 +421,7 @@ Each item is roughly one PR. API items come first because the other two repos de
   - `theindex.training` serves the site (`web`); the portal and `/api` answer only on `app.theindex.training`, and `CORS_ORIGIN` lists only that host. The old portal addresses on `theindex.training` are the site's 404 page, except `/login` (301 to the portal); people logged in there log in again on `app.`, since the token is stored per origin.
   - The site's deploy job lost its `DEPLOY_ENABLED` guard instead of the variable being set, so it runs on every push to `main` like the other two repos'.
   - Search Console uses a Domain property (it covers every subdomain). A Domain property's sitemap field takes the full address, `https://theindex.training/sitemap.xml`, not a path. Analytics stays in phase 2 (D13) (sections 9, 11, 12, 14).
+- **2026-11-25, holidays (theindex-front#114 for the portal):**
+  - The site dresses up for December, Christmas and New Year from the Sofia date, worked out by the server for every page (`lib/holidays.ts`, the portal's windows), so nothing is deployed or switched on for an occasion and the rest of the year a page carries none of it. `?holidayDate=YYYY-MM-DD` previews a day.
+  - December (Dec 1 – Jan 6): falling snow (a canvas, the first client-side JavaScript beyond the theme switch and the YouTube player; none with reduced motion), a snow cap on the page titles, and "Празнични ефекти" on/off in the footer. Dec 1 – 31: a line under the header points members to the Advent calendar in the portal.
+  - The browser keeps one `holidays` key (the switch, for the season), deleted outside Dec 1 – Jan 10 by the pre-paint script.

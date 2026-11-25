@@ -1,0 +1,43 @@
+---
+// Dec 1 – Dec 31: members' Advent calendar is in the app (theindex-front's dashboard); a line under
+// the header points them there.
+import { t } from '../../i18n';
+import { getConfig } from '../../lib/config';
+
+const { appUrl } = getConfig();
+---
+
+<aside
+  class="advent-teaser"
+  aria-label={t('holidays.advent.label')}
+  data-testid="advent-teaser"
+>
+  <div class="container advent-teaser__inner">
+    <p class="advent-teaser__text">{t('holidays.advent.text')}</p>
+    <a class="btn btn--secondary" href={appUrl}>
+      {t('holidays.advent.open')}
+    </a>
+  </div>
+</aside>
+
+<style>
+  .advent-teaser {
+    border-bottom: 1px solid var(--accent-border);
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+
+  .advent-teaser__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+    padding-block: var(--space-3);
+  }
+
+  .advent-teaser__text {
+    margin: 0;
+    font-weight: 500;
+  }
+</style>

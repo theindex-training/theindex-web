@@ -1,0 +1,73 @@
+---
+// Over Christmas, a string of lights along the top of the header, glowing slowly in turn, like
+// the portal's. Decorative (aria-hidden, no pointer); shown while the holiday effects are on and
+// without the glow when the OS asks for less motion.
+const bulbs = Array.from({ length: 64 }, (_, index) => index % 4);
+---
+
+<div class="lights" aria-hidden="true" data-testid="holiday-lights">
+  {bulbs.map((color) => (
+    <span class={`lights__bulb lights__bulb--${color}`} />
+  ))}
+</div>
+
+<style>
+  .lights {
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1;
+    gap: var(--space-3);
+    height: 0.875rem;
+    padding: 0 var(--space-2);
+    overflow: hidden;
+    border-top: 1px solid var(--nav-border);
+    pointer-events: none;
+  }
+
+  :global(html[data-holiday-snow]) .lights {
+    display: flex;
+  }
+
+  .lights__bulb {
+    flex: none;
+    width: 0.5rem;
+    height: 0.6875rem;
+    margin-top: 1px;
+    border-radius: 45% 45% 50% 50%;
+    animation: lights-glow 3.2s ease-in-out infinite;
+  }
+
+  .lights__bulb--0 {
+    background: var(--holiday-red);
+  }
+
+  .lights__bulb--1 {
+    background: var(--holiday-gold);
+    animation-delay: 0.8s;
+  }
+
+  .lights__bulb--2 {
+    background: var(--holiday-green);
+    animation-delay: 1.6s;
+  }
+
+  .lights__bulb--3 {
+    background: var(--snow-fill);
+    animation-delay: 2.4s;
+  }
+
+  @keyframes lights-glow {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lights__bulb {
+      animation: none;
+    }
+  }
+</style>

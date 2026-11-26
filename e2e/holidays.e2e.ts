@@ -39,7 +39,7 @@ test.describe('holidays', () => {
   );
 
   test(
-    'outside December nothing shows, and the holidays’ storage is deleted',
+    'outside December nothing shows, and a preview leaves the holidays’ storage alone',
     { tag: '@desktop' },
     async ({ page }) => {
       await page.addInitScript(() => {
@@ -59,7 +59,36 @@ test.describe('holidays', () => {
       await expect(page.getByTestId('advent-teaser')).toHaveCount(0);
       await expect(page.getByTestId('holiday-snow')).toHaveCount(0);
       await expect(effects(page)).toHaveCount(0);
-      expect(await stored(page)).toBeNull();
+      // A preview never deletes the visitor's choice (the cleanup itself is unit-tested).
+      expect(await stored(page)).toBe(
+        JSON.stringify({ season: 2026, effects: false }),
+      );
+    },
+  );
+
+  test(
+    'over Christmas the logo wears a hat and lights hang along the header, until the effects are off',
+    { tag: ['@desktop', '@mobile'] },
+    async ({ page }) => {
+      await page.goto('/?holidayDate=2026-12-22');
+
+      const banner = page.getByRole('banner');
+      await expect(banner.getByTestId('brand-santa-hat')).toBeVisible();
+      await expect(banner.getByTestId('holiday-lights')).toBeVisible();
+
+      await effects(page).uncheck();
+      await expect(banner.getByTestId('brand-santa-hat')).toBeHidden();
+      await expect(banner.getByTestId('holiday-lights')).toBeHidden();
+    },
+  );
+
+  test(
+    'before Christmas there is no hat',
+    { tag: '@desktop' },
+    async ({ page }) => {
+      await page.goto('/?holidayDate=2026-12-19');
+      await expect(page.getByTestId('holiday-snow')).toBeVisible();
+      await expect(page.getByTestId('brand-santa-hat')).toHaveCount(0);
     },
   );
 });

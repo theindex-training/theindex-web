@@ -23,6 +23,7 @@ import { DEFAULT_LOCALE, t } from '../i18n';
 import { getConfig } from '../lib/config';
 import { RSS_PATH } from '../lib/feeds';
 import { pageHolidays } from '../lib/holidays';
+import { HOLIDAY_STORAGE_SCRIPT } from '../scripts/holiday-storage';
 import {
   OG_LOCALES,
   absoluteUrl,
@@ -79,8 +80,9 @@ const { state: holidays, preview: holidayPreview } = pageHolidays(Astro.url);
   lang={lang}
   data-holiday-season={holidays.season ?? undefined}
   data-holiday-december={holidays.december ? '' : undefined}
+  data-holiday-christmas={holidays.christmas ? '' : undefined}
   data-holiday-snow={holidays.december ? '' : undefined}
-  data-holiday-preview={holidayPreview && holidays.active ? '' : undefined}
+  data-holiday-preview={holidayPreview ? '' : undefined}
   style={
     holidays.december
       ? `--holiday-snow-depth: ${holidays.snowDepth.toFixed(3)}`
@@ -150,27 +152,8 @@ const { state: holidays, preview: holidayPreview } = pageHolidays(Astro.url);
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.style.colorScheme = theme;
       })();
-      // The holidays' storage (src/scripts/holidays.ts): deleted outside the season (Dec 1 – Jan 10)
-      // or when it is from another one, and the snow caps left off when the effects were switched
-      // off. A ?holidayDate= preview neither reads nor changes it.
-      (function () {
-        var root = document.documentElement;
-        if (root.hasAttribute('data-holiday-preview')) return;
-        var season = Number(root.getAttribute('data-holiday-season')) || 0;
-        try {
-          var stored = JSON.parse(localStorage.getItem('holidays') || 'null');
-          if (stored && (!season || stored.season !== season)) {
-            localStorage.removeItem('holidays');
-          } else if (stored && stored.effects === false) {
-            root.removeAttribute('data-holiday-snow');
-          }
-        } catch (e) {
-          try {
-            localStorage.removeItem('holidays');
-          } catch (e2) {}
-        }
-      })();
     </script>
+    <script is:inline set:html={HOLIDAY_STORAGE_SCRIPT} />
   </head>
   <body>
     <a class="skip-link btn btn--primary" href="#main">

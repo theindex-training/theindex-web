@@ -10,6 +10,8 @@ import {
   isCurrentPath,
 } from '../lib/navigation';
 import Brand from './Brand.astro';
+import HolidayLights from './holidays/HolidayLights.astro';
+import { pageHolidays } from '../lib/holidays';
 
 interface Props {
   /** Link the categories (read from the API). Off on the 503 page, where the API is down. */
@@ -26,9 +28,11 @@ const links = [
   ...categories.map((c) => ({ href: categoryPath(c.slug), label: c.name })),
 ];
 const pathname = Astro.url.pathname;
+const christmas = pageHolidays(Astro.url).state.christmas;
 ---
 
 <header class="site-header">
+  {christmas && <HolidayLights />}
   <div class="container site-header__inner">
     <Brand />
     <nav class="site-header__nav" aria-label={t('header.navLabel')}>
@@ -57,6 +61,7 @@ const pathname = Astro.url.pathname;
 <style>
   /* The dark "iron" bar of the portal's navigation shell, so it looks the same in both themes. */
   .site-header {
+    position: relative;
     background: var(--nav-bg);
     color: var(--nav-text);
   }

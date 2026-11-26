@@ -4,7 +4,8 @@ import { Snowfall } from './snowfall';
  * The holidays in the browser: the falling snow and the "Празнични ефекти" switch in the footer.
  * The server decides what is on (lib/holidays.ts) and marks <html>:
  * - `data-holiday-season="2026"` from Dec 1 to Jan 10,
- * - `data-holiday-december` while it snows (Dec 1 – Jan 6),
+ * - `data-holiday-december` while it snows (Dec 1 – Jan 6), and `data-holiday-christmas`
+ *   (Dec 20 – 27), when it snows harder,
  * - `data-holiday-snow` for the snow caps (removed before the first paint when the person
  *   switched the effects off, by the inline script in BaseLayout.astro),
  * - `data-holiday-preview` on a `?holidayDate=` preview, which stores nothing.
@@ -14,8 +15,9 @@ import { Snowfall } from './snowfall';
  */
 export const HOLIDAY_STORAGE_KEY = 'holidays';
 
-/** December's snowfall is light, as in the portal. */
+/** December's snowfall is light, heavier over Christmas, as in the portal. */
 const DECEMBER_INTENSITY = 0.6;
+const CHRISTMAS_INTENSITY = 1;
 
 type ReadableStorage = Pick<Storage, 'getItem'>;
 type WritableStorage = Pick<Storage, 'setItem' | 'removeItem'>;
@@ -86,7 +88,11 @@ export function initHolidays(doc: Document, win: Window): void {
     if (canvas) canvas.hidden = !falling;
     if (falling) {
       snowfall ??= new Snowfall(canvas, win);
-      snowfall.setIntensity(DECEMBER_INTENSITY);
+      snowfall.setIntensity(
+        root.hasAttribute('data-holiday-christmas')
+          ? CHRISTMAS_INTENSITY
+          : DECEMBER_INTENSITY,
+      );
     } else {
       snowfall?.setIntensity(0);
     }

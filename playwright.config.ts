@@ -15,6 +15,37 @@ const PORT = 4322;
 export const SITE_URL = `http://127.0.0.1:${PORT}`;
 export const APP_URL = 'https://app.example.test';
 
+/**
+ * From Jan 1 to Jan 6 (the server's real Sofia date) the сурвачка's modal wish would open on every
+ * page and cover the journeys CI runs then, so the browser starts with it stored as seen. The
+ * holidays journeys start empty instead (`test.use({ storageState: EMPTY_STORAGE })`).
+ */
+function holidayStorage() {
+  const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Sofia',
+  })
+    .format(new Date())
+    .split('-')
+    .map(Number);
+  if (month !== 1 || day > 6) return EMPTY_STORAGE;
+  return {
+    cookies: [],
+    origins: [
+      {
+        origin: SITE_URL,
+        localStorage: [
+          {
+            name: 'holidays',
+            value: JSON.stringify({ season: year - 1, survachka: true }),
+          },
+        ],
+      },
+    ],
+  };
+}
+
+export const EMPTY_STORAGE = { cookies: [], origins: [] };
+
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
@@ -32,6 +63,7 @@ export default defineConfig({
     timezoneId: 'Europe/Sofia',
     locale: 'bg-BG',
     trace: 'retain-on-failure',
+    storageState: holidayStorage(),
   },
   projects: [
     {

@@ -1,0 +1,68 @@
+---
+// A сурвачка, like the portal's (theindex-front `src/app/holidays/survachka.component.ts`): the
+// decorated cornel branch Bulgarian children tap people's backs with on New Year's Day. Decorative
+// only; the parent sizes and animates it.
+---
+
+<svg class="survachka" viewBox="0 0 80 110" aria-hidden="true">
+  <path
+    class="survachka__wood"
+    d="M70 108C64 80 60 60 52 44 40 20 14 10 10 30s20 28 30 10c8-14-4-24-12-16"
+  ></path>
+  <path
+    class="survachka__thread survachka__thread--red"
+    d="m58 64-14 22m10-32L38 72"
+  ></path>
+  <path
+    class="survachka__thread survachka__thread--white"
+    d="m60 70-10 24"
+  ></path>
+  <circle class="survachka__popcorn" cx="14" cy="22" r="4.5"></circle>
+  <circle class="survachka__popcorn" cx="24" cy="48" r="4.5"></circle>
+  <circle class="survachka__popcorn" cx="46" cy="30" r="4"></circle>
+  <circle class="survachka__gold" cx="9" cy="38" r="5"></circle>
+  <circle class="survachka__red" cx="36" cy="12" r="4.5"></circle>
+  <circle class="survachka__gold" cx="44" cy="88" r="6"></circle>
+</svg>
+
+<style>
+  .survachka {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .survachka__wood {
+    fill: none;
+    stroke: var(--survachka-wood);
+    stroke-width: 5;
+    stroke-linecap: round;
+  }
+
+  .survachka__thread {
+    stroke-width: 2.4;
+    stroke-linecap: round;
+  }
+
+  .survachka__thread--red {
+    stroke: var(--holiday-red);
+  }
+
+  .survachka__thread--white {
+    stroke: var(--snow-fill);
+  }
+
+  .survachka__popcorn {
+    fill: var(--survachka-popcorn);
+    stroke: var(--snow-edge);
+  }
+
+  .survachka__gold {
+    fill: var(--holiday-gold);
+  }
+
+  .survachka__red {
+    fill: var(--holiday-red);
+  }
+</style>

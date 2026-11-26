@@ -71,6 +71,7 @@ describe('pageHolidays', () => {
     );
     const holidays = pageHolidays(url, new Date('2026-11-25T10:00:00Z'));
     expect(holidays.preview).toBe(true);
+    expect(holidays.day).toBe('2026-12-24');
     expect(holidays.state.adventDay).toBe(24);
   });
 

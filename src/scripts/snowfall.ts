@@ -2,7 +2,8 @@
  * The same engine as the portal's (theindex-front `src/app/holidays/snowfall.ts`); keep the two in
  * step. The falling snow and the little bursts of it, drawn on one full-window canvas that ignores the
  * pointer. Few flakes (a few dozen, fewer on phones), stopped while the tab is hidden and when
- * there is nothing to draw. Colors come from the theme's `--snow-fill` / `--snow-edge` tokens.
+ * there is nothing to draw. Colors come from the theme's `--snow-fill` / `--snow-edge` tokens, and
+ * the confetti's from `--holiday-red` / `--holiday-green` / `--holiday-gold`.
  */
 
 interface Flake {
@@ -22,7 +23,18 @@ interface Particle {
   r: number;
   life: number;
   max: number;
+  /** A piece of confetti: its color and how it turns; a snowflake has none. */
+  color?: string;
+  turn?: number;
+  spin?: number;
 }
+
+const CONFETTI_TOKENS = [
+  '--holiday-red',
+  '--holiday-green',
+  '--holiday-gold',
+  '--snow-fill',
+];
 
 /** About one flake per this many square pixels, at full intensity. */
 const AREA_PER_FLAKE = 12_000;
@@ -32,12 +44,17 @@ export class Snowfall {
   private readonly context: CanvasRenderingContext2D | null;
   private flakes: Flake[] = [];
   private particles: Particle[] = [];
+  /** New Year's rockets on their way up; each bursts into sparks at its top. */
+  private rockets: Particle[] = [];
+  private sparks: Particle[] = [];
+  private timers: ReturnType<typeof setTimeout>[] = [];
   private width = 0;
   private height = 0;
   private intensity = 0;
   private frame = 0;
   private fill = '';
   private edge = '';
+  private confettiColors: string[] = [];
 
   private readonly onResize = () => this.resize();
   private readonly onVisibility = () => this.kick();
@@ -67,6 +84,91 @@ export class Snowfall {
     this.kick();
   }
 
+  /** Confetti thrown up from (x, y): a gift opened, a celebration over Christmas. */
+  confetti(x: number, y: number, count = 80): void {
+    this.readColors();
+    if (!this.confettiColors.length) {
+      return;
+    }
+    for (let i = 0; i < count; i++) {
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+      const speed = 4 + Math.random() * 5;
+      const max = 90 + Math.random() * 50;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        r: 3 + Math.random() * 2.5,
+        life: max,
+        max,
+        color: this.confettiColors[i % this.confettiColors.length],
+        turn: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.3,
+      });
+    }
+    this.kick();
+  }
+
+  /** A firework bursting at (x, y): sparks flying out and falling, in the confetti's colors. */
+  fireworks(x: number, y: number, count = 70): void {
+    this.readColors();
+    if (!this.confettiColors.length) {
+      return;
+    }
+    const color = (index: number) =>
+      this.confettiColors[index % this.confettiColors.length];
+    const tint = Math.floor(Math.random() * this.confettiColors.length);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.4 + Math.random() * 3;
+      const max = 60 + Math.random() * 40;
+      this.sparks.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        r: 2,
+        life: max,
+        max,
+        // Mostly one color per burst, with a few sparks of the others.
+        color: color(i % 5 === 0 ? i : tint),
+      });
+    }
+    this.kick();
+  }
+
+  /** A rocket from the bottom of the window at x, bursting `top` pixels from the top. */
+  rocket(x: number, top: number): void {
+    // Nothing runs while the tab is hidden: a rocket queued then would wait and burst with the
+    // others when it is shown again.
+    if (this.view.document.hidden) {
+      return;
+    }
+    const rise = Math.max(80, this.height - top);
+    const gravity = 0.06;
+    const vy = -Math.sqrt(2 * gravity * rise);
+    const life = Math.round(-vy / gravity);
+    this.rockets.push({ x, y: this.height, vx: 0, vy, r: 2, life, max: life });
+    this.kick();
+  }
+
+  /** A short fireworks show: `count` rockets across the window, one every ~0.6 s. */
+  show(count = 7): void {
+    for (let i = 0; i < count; i++) {
+      this.timers.push(
+        setTimeout(
+          () =>
+            this.rocket(
+              this.width * (0.15 + Math.random() * 0.7),
+              this.height * (0.15 + Math.random() * 0.3),
+            ),
+          i * 600 + Math.random() * 300,
+        ),
+      );
+    }
+  }
+
   /** A puff of snow rising from (x, y), e.g. above the celebration's line. */
   burst(x: number, y: number, count = 40): void {
     this.readColors();
@@ -89,6 +191,7 @@ export class Snowfall {
 
   destroy(): void {
     this.view.cancelAnimationFrame(this.frame);
+    this.timers.forEach((timer) => clearTimeout(timer));
     this.view.removeEventListener('resize', this.onResize);
     this.view.document.removeEventListener(
       'visibilitychange',
@@ -114,6 +217,9 @@ export class Snowfall {
     );
     this.fill = style.getPropertyValue('--snow-fill').trim() || this.fill;
     this.edge = style.getPropertyValue('--snow-edge').trim() || this.edge;
+    this.confettiColors = CONFETTI_TOKENS.map((token) =>
+      style.getPropertyValue(token).trim(),
+    ).filter(Boolean);
   }
 
   private flake(anywhere: boolean): Flake {
@@ -152,14 +258,29 @@ export class Snowfall {
     }
     this.particles = this.particles.filter((particle) => --particle.life > 0);
     for (const particle of this.particles) {
-      particle.vx *= 0.965;
-      particle.vy = particle.vy * 0.965 + 0.03;
-      particle.x += particle.vx;
-      particle.y += particle.vy;
       const fade = Math.min(1, particle.life / (particle.max * 0.4));
-      this.dot(context, particle.x, particle.y, particle.r, fade);
+      if (particle.color) {
+        particle.vx *= 0.97;
+        particle.vy = particle.vy * 0.97 + 0.16;
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.turn = (particle.turn ?? 0) + (particle.spin ?? 0);
+        this.piece(context, particle, fade);
+      } else {
+        particle.vx *= 0.965;
+        particle.vy = particle.vy * 0.965 + 0.03;
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        this.dot(context, particle.x, particle.y, particle.r, fade);
+      }
     }
-    if (this.flakes.length || this.particles.length) {
+    this.drawFireworks(context);
+    if (
+      this.flakes.length ||
+      this.particles.length ||
+      this.rockets.length ||
+      this.sparks.length
+    ) {
       this.kick();
     }
   }
@@ -185,6 +306,73 @@ export class Snowfall {
     context.beginPath();
     context.arc(x, y, r, 0, Math.PI * 2);
     context.fill();
+    context.globalAlpha = 1;
+  }
+
+  /** A piece of confetti: a small turning strip. */
+  private piece(
+    context: CanvasRenderingContext2D,
+    particle: Particle,
+    alpha: number,
+  ): void {
+    context.save();
+    context.globalAlpha = alpha;
+    context.fillStyle = particle.color!;
+    context.translate(particle.x, particle.y);
+    context.rotate(particle.turn ?? 0);
+    context.fillRect(
+      -particle.r,
+      -particle.r / 2.4,
+      particle.r * 2,
+      particle.r / 1.2,
+    );
+    context.restore();
+  }
+
+  /** Rockets rise with a short trail; at their top they burst; sparks fall and fade. */
+  private drawFireworks(context: CanvasRenderingContext2D): void {
+    const burst: Particle[] = [];
+    this.rockets = this.rockets.filter((rocket) => {
+      if (--rocket.life <= 0) {
+        burst.push(rocket);
+        return false;
+      }
+      return true;
+    });
+    burst.forEach((rocket) => this.fireworks(rocket.x, rocket.y));
+    context.lineCap = 'round';
+    for (const rocket of this.rockets) {
+      rocket.vy += 0.06;
+      rocket.y += rocket.vy;
+      this.trail(context, rocket, this.fill, 1);
+    }
+    this.sparks = this.sparks.filter((spark) => --spark.life > 0);
+    for (const spark of this.sparks) {
+      spark.vx *= 0.975;
+      spark.vy = spark.vy * 0.975 + 0.045;
+      spark.x += spark.vx;
+      spark.y += spark.vy;
+      const fade = Math.min(1, spark.life / (spark.max * 0.4));
+      this.trail(context, spark, spark.color ?? this.fill, fade);
+    }
+  }
+
+  private trail(
+    context: CanvasRenderingContext2D,
+    particle: Particle,
+    color: string,
+    alpha: number,
+  ): void {
+    if (!color) {
+      return;
+    }
+    context.globalAlpha = alpha;
+    context.strokeStyle = color;
+    context.lineWidth = particle.r;
+    context.beginPath();
+    context.moveTo(particle.x - particle.vx * 2, particle.y - particle.vy * 2);
+    context.lineTo(particle.x, particle.y);
+    context.stroke();
     context.globalAlpha = 1;
   }
 }

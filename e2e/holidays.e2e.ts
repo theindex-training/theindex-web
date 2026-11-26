@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { APP_URL } from '../playwright.config';
+import { APP_URL, EMPTY_STORAGE } from '../playwright.config';
 import { t } from './support/i18n';
 
 /**
@@ -15,6 +15,8 @@ const effects = (page: Page) =>
     .getByRole('switch', { name: t('holidays.effects') });
 
 test.describe('holidays', () => {
+  // The holidays' own journeys start with nothing stored (see holidayStorage() in the config).
+  test.use({ storageState: EMPTY_STORAGE });
   test(
     'in December it snows, members are pointed to the Advent calendar, and the snow can be stopped',
     { tag: ['@desktop', '@mobile'] },
@@ -89,6 +91,35 @@ test.describe('holidays', () => {
       await page.goto('/?holidayDate=2026-12-19');
       await expect(page.getByTestId('holiday-snow')).toBeVisible();
       await expect(page.getByTestId('brand-santa-hat')).toHaveCount(0);
+    },
+  );
+
+  test(
+    'at New Year the logo sparkles, and from Jan 1 the сурвачка greets with its wish',
+    { tag: ['@desktop', '@mobile'] },
+    async ({ page }) => {
+      await page.goto('/?holidayDate=2026-12-31');
+      await expect(
+        page.getByRole('banner').getByTestId('brand-sparkle').first(),
+      ).toBeVisible();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+
+      await page.goto('/?holidayDate=2027-01-01');
+      const wish = page.getByRole('dialog', {
+        name: t('holidays.newYear.title'),
+      });
+      await expect(wish).toBeVisible();
+      await expect(wish).toContainText('Сурва, сурва година,');
+      await wish
+        .getByRole('button', { name: t('holidays.newYear.thanks') })
+        .click();
+      await expect(wish).toBeHidden();
+
+      await page
+        .getByRole('banner')
+        .getByRole('button', { name: t('holidays.newYear.open') })
+        .click();
+      await expect(wish).toBeVisible();
     },
   );
 });

@@ -108,6 +108,8 @@ export const HOLIDAY_DATE_PARAM = 'holidayDate';
 
 export interface PageHolidays {
   state: HolidayState;
+  /** The day shown, 'YYYY-MM-DD' (the gym's calendar day, or the previewed one). */
+  day: string;
   /** The day shown is a preview (`?holidayDate=`): nothing is stored in the browser. */
   preview: boolean;
 }
@@ -115,8 +117,10 @@ export interface PageHolidays {
 /** What is on for a page: the previewed day when the address asks for one, else today in Sofia. */
 export function pageHolidays(url: URL, now: Date = new Date()): PageHolidays {
   const previewDay = parseDayKey(url.searchParams.get(HOLIDAY_DATE_PARAM));
+  const day = previewDay ?? sofiaDay(now);
   return {
-    state: holidayState(previewDay ?? sofiaDay(now)),
+    state: holidayState(day),
+    day,
     preview: previewDay !== null,
   };
 }

@@ -1,0 +1,168 @@
+---
+// Jan 1 – 6: the сурвачка's New Year wish, like the portal's. A modal <dialog> that
+// src/scripts/holidays.ts opens by itself on the first visit of the new year (remembered for the
+// season), and again from the сурвачка by the logo. The сурвачка taps the logo seven times
+// (not with reduced motion), then the gym's rhyme.
+import { t } from '../../i18n';
+import Survachka from './Survachka.astro';
+---
+
+<dialog
+  class="survachka-dialog"
+  aria-labelledby="survachka-title"
+  aria-describedby="survachka-wish"
+  data-survachka-dialog
+  data-testid="survachka-dialog"
+>
+  <div class="survachka-dialog__scene" aria-hidden="true">
+    <img
+      class="survachka-dialog__logo"
+      src="/brand/the-index-logo-red.png"
+      alt=""
+      width="640"
+      height="270"
+    />
+    <span class="survachka-dialog__branch">
+      <Survachka />
+    </span>
+  </div>
+  <h2 class="survachka-dialog__title" id="survachka-title">
+    {t('holidays.newYear.title')}
+  </h2>
+  <p class="survachka-dialog__wish" id="survachka-wish">
+    {t('holidays.newYear.wish')}
+  </p>
+  <p class="survachka-dialog__custom">{t('holidays.newYear.custom')}</p>
+  <div class="survachka-dialog__actions">
+    <button class="btn btn--primary" type="button" data-survachka-close>
+      {t('holidays.newYear.thanks')}
+    </button>
+  </div>
+</dialog>
+
+<style>
+  .survachka-dialog {
+    width: calc(100% - 2 * var(--space-4));
+    max-width: 30rem;
+    max-height: calc(100dvh - 2 * var(--space-4));
+    padding: var(--space-6);
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-md);
+  }
+
+  .survachka-dialog::backdrop {
+    background: var(--scrim);
+  }
+
+  .survachka-dialog__scene {
+    position: relative;
+    width: 8rem;
+    margin: var(--space-6) auto var(--space-3);
+  }
+
+  .survachka-dialog__logo {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .survachka-dialog__branch {
+    position: absolute;
+    top: -45%;
+    left: 78%;
+    width: 3.5rem;
+    transform: rotate(18deg);
+    transform-origin: 85% 95%;
+  }
+
+  /* The script adds .is-tapping when the wish opens (not with reduced motion). */
+  .survachka-dialog.is-tapping .survachka-dialog__branch {
+    animation: survachka-tap 4.2s ease-in-out 0.3s both;
+  }
+
+  .survachka-dialog.is-tapping .survachka-dialog__logo {
+    animation: survachka-bump 4.2s ease-in-out 0.3s both;
+  }
+
+  @keyframes survachka-tap {
+    0%,
+    92%,
+    100% {
+      transform: rotate(18deg);
+    }
+
+    8%,
+    20%,
+    32%,
+    44%,
+    56%,
+    68%,
+    80% {
+      transform: rotate(-28deg);
+    }
+
+    14%,
+    26%,
+    38%,
+    50%,
+    62%,
+    74%,
+    86% {
+      transform: rotate(14deg);
+    }
+  }
+
+  @keyframes survachka-bump {
+    8%,
+    20%,
+    32%,
+    44%,
+    56%,
+    68%,
+    80% {
+      transform: translateY(2px) scale(0.97);
+    }
+
+    0%,
+    14%,
+    26%,
+    38%,
+    50%,
+    62%,
+    74%,
+    86%,
+    100% {
+      transform: none;
+    }
+  }
+
+  .survachka-dialog__title {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-2xl);
+    text-align: center;
+  }
+
+  .survachka-dialog__wish {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-base);
+    line-height: 1.4;
+    text-align: center;
+    white-space: pre-line;
+  }
+
+  .survachka-dialog__custom {
+    margin: 0 0 var(--space-6);
+    color: var(--muted);
+    font-size: var(--text-sm);
+    text-align: center;
+  }
+
+  .survachka-dialog__actions {
+    display: flex;
+    justify-content: center;
+  }
+</style>

@@ -5,6 +5,7 @@ import {
   initHolidays,
   readEffectsOn,
   storeEffects,
+  takeFireworksShow,
 } from './holidays';
 
 /** What BaseLayout renders while it snows (season 2026), plus the footer switch and the canvas. */
@@ -141,5 +142,139 @@ describe('initHolidays', () => {
     document.documentElement.removeAttribute('data-holiday-december');
     initHolidays(document, window);
     expect(field().hidden).toBe(true);
+  });
+});
+
+describe('the season’s storage', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('keeps the switch, the show and the wish together', () => {
+    storeEffects(localStorage, 2026, false);
+    expect(takeFireworksShow(localStorage, 2026, '2026-12-31')).toBe(true);
+    expect(takeFireworksShow(localStorage, 2026, '2026-12-31')).toBe(false);
+    expect(JSON.parse(localStorage.getItem(HOLIDAY_STORAGE_KEY)!)).toEqual({
+      season: 2026,
+      effects: false,
+      show: '2026-12-31',
+    });
+    // Switching back on keeps the rest.
+    storeEffects(localStorage, 2026, true);
+    expect(JSON.parse(localStorage.getItem(HOLIDAY_STORAGE_KEY)!)).toEqual({
+      season: 2026,
+      show: '2026-12-31',
+    });
+    // A new day gets its show.
+    expect(takeFireworksShow(localStorage, 2026, '2027-01-01')).toBe(true);
+  });
+
+  it('plays the show on every page of a preview (no storage)', () => {
+    expect(takeFireworksShow(undefined, 2026, '2026-12-31')).toBe(true);
+    expect(takeFireworksShow(undefined, 2026, '2026-12-31')).toBe(true);
+  });
+});
+
+describe('the сурвачка’s wish', () => {
+  const dialogProto = HTMLDialogElement.prototype as unknown as Record<
+    string,
+    unknown
+  >;
+
+  function renderJanuary({ preview = false } = {}) {
+    const root = document.documentElement;
+    root.setAttribute('data-holiday-season', '2026');
+    root.setAttribute('data-holiday-december', '');
+    root.setAttribute('data-holiday-snow', '');
+    root.setAttribute('data-holiday-survachka', '');
+    root.setAttribute('data-holiday-day', '2027-01-01');
+    root.toggleAttribute('data-holiday-preview', preview);
+    document.body.innerHTML = `
+      <button data-survachka-open hidden>Сурвачка</button>
+      <dialog data-survachka-dialog><button data-survachka-close>Благодаря!</button></dialog>
+      <canvas data-holiday-snow-canvas hidden></canvas>`;
+  }
+
+  const dialog = () =>
+    document.querySelector<HTMLDialogElement>('[data-survachka-dialog]')!;
+  const openButton = () =>
+    document.querySelector<HTMLButtonElement>('[data-survachka-open]')!;
+  const close = () =>
+    document.querySelector<HTMLButtonElement>('[data-survachka-close]')!;
+
+  beforeEach(() => {
+    localStorage.clear();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    dialogProto['showModal'] = function (this: HTMLDialogElement) {
+      this.setAttribute('open', '');
+    };
+    dialogProto['close'] = function (this: HTMLDialogElement) {
+      this.removeAttribute('open');
+      this.dispatchEvent(new Event('close'));
+    };
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    delete dialogProto['showModal'];
+    delete dialogProto['close'];
+    for (const name of [
+      'data-holiday-season',
+      'data-holiday-december',
+      'data-holiday-snow',
+      'data-holiday-survachka',
+      'data-holiday-day',
+      'data-holiday-preview',
+    ]) {
+      document.documentElement.removeAttribute(name);
+    }
+  });
+
+  it('opens by itself the first time, taps the logo, and is remembered once closed', () => {
+    stubMotion(false);
+    renderJanuary();
+    initHolidays(document, window);
+    expect(dialog().open).toBe(true);
+    expect(dialog().classList).toContain('is-tapping');
+    expect(openButton().hidden).toBe(false);
+
+    close().click();
+    expect(dialog().open).toBe(false);
+    expect(JSON.parse(localStorage.getItem(HOLIDAY_STORAGE_KEY)!)).toEqual({
+      season: 2026,
+      survachka: true,
+    });
+  });
+
+  it('doesn’t open by itself once seen; the сурвачка by the logo opens it', () => {
+    stubMotion(false);
+    localStorage.setItem(
+      HOLIDAY_STORAGE_KEY,
+      JSON.stringify({ season: 2026, survachka: true }),
+    );
+    renderJanuary();
+    initHolidays(document, window);
+    expect(dialog().open).toBe(false);
+    openButton().click();
+    expect(dialog().open).toBe(true);
+  });
+
+  it('greets even with the effects off, without the tapping when the OS asks for less motion', () => {
+    stubMotion(true);
+    localStorage.setItem(
+      HOLIDAY_STORAGE_KEY,
+      JSON.stringify({ season: 2026, effects: false }),
+    );
+    renderJanuary();
+    initHolidays(document, window);
+    expect(dialog().open).toBe(true);
+    expect(dialog().classList).not.toContain('is-tapping');
+  });
+
+  it('stores nothing on a preview', () => {
+    stubMotion(false);
+    renderJanuary({ preview: true });
+    initHolidays(document, window);
+    close().click();
+    expect(localStorage.getItem(HOLIDAY_STORAGE_KEY)).toBeNull();
   });
 });

@@ -19,6 +19,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import AdventTeaser from '../components/holidays/AdventTeaser.astro';
 import HolidayEffects from '../components/holidays/HolidayEffects.astro';
+import SurvachkaDialog from '../components/holidays/SurvachkaDialog.astro';
 import { DEFAULT_LOCALE, t } from '../i18n';
 import { getConfig } from '../lib/config';
 import { RSS_PATH } from '../lib/feeds';
@@ -72,7 +73,11 @@ const lang = Astro.currentLocale ?? DEFAULT_LOCALE;
 const canonical = canonicalPath ? absoluteUrl(siteUrl, canonicalPath) : null;
 const socialImage = image ?? defaultSocialImage(siteUrl, appName);
 // The holidays (lib/holidays.ts): marked on <html> for the snow caps and src/scripts/holidays.ts.
-const { state: holidays, preview: holidayPreview } = pageHolidays(Astro.url);
+const {
+  state: holidays,
+  day: holidayDay,
+  preview: holidayPreview,
+} = pageHolidays(Astro.url);
 ---
 
 <!doctype html>
@@ -81,6 +86,9 @@ const { state: holidays, preview: holidayPreview } = pageHolidays(Astro.url);
   data-holiday-season={holidays.season ?? undefined}
   data-holiday-december={holidays.december ? '' : undefined}
   data-holiday-christmas={holidays.christmas ? '' : undefined}
+  data-holiday-new-year={holidays.newYear ? '' : undefined}
+  data-holiday-survachka={holidays.survachka ? '' : undefined}
+  data-holiday-day={holidays.active ? holidayDay : undefined}
   data-holiday-snow={holidays.december ? '' : undefined}
   data-holiday-preview={holidayPreview ? '' : undefined}
   style={
@@ -165,6 +173,7 @@ const { state: holidays, preview: holidayPreview } = pageHolidays(Astro.url);
       <slot />
     </main>
     <SiteFooter holidaySwitch={holidays.december} />
+    {holidays.survachka && <SurvachkaDialog />}
     {holidays.december && <HolidayEffects />}
   </body>
 </html>
